@@ -19,13 +19,15 @@ def create_app():
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     CORS(app)  # Enable CORS for all routes
 
-    # Database configuration - Support both Railway and DigitalOcean
+    # Database configuration - Optimized for Railway PostgreSQL
     database_url = os.getenv("DATABASE_URL")
     
-    if database_url:
+    if database_url and database_url.startswith("postgresql"):
+        print(f"🔗 Using Railway PostgreSQL database")
+    elif database_url:
         print(f"Using external database: {database_url}")
     else:
-        print("DATABASE_URL not set, using SQLite fallback")
+        print("⚠️ DATABASE_URL not set, using SQLite fallback")
         database_url = "sqlite:///epom_dev.db"
     
     print(f"🔗 Database URL: {database_url}")
@@ -172,9 +174,8 @@ def create_app():
         try:
             print("🔧 Manual database setup initiated...")
             
-            # Force SQLite database connection
-            app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///epom_dev.db"
-            print(f"🔗 Forced database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
+            # Use current database configuration (Railway PostgreSQL or fallback)
+            print(f"🔗 Using database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
             
             # Import all models to ensure they're registered
             from models import User, Event, Document, Action, Project, Notification, Resource, AttendanceRecord, DocumentAudit
