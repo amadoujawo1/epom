@@ -13,7 +13,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 
 # Load environment variables
-load_dotenv()
+load_dotenv('backend/.env')
 
 def create_app():
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
