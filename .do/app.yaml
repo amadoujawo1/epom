@@ -1,0 +1,19 @@
+name: epom-app
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: amadoujawo1/epom
+    branch: main
+  run_command: gunicorn "app:app"
+  environment_slug: python-3.10
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  envs:
+  - key: FLASK_ENV
+    value: production
+  - key: JWT_SECRET_KEY
+    value: your-super-secret-jwt-key-here
+  http_port: 8080
+  routes:
+  - path: /
