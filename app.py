@@ -104,13 +104,29 @@ def create_app():
     @app.route('/api/setup-database', methods=['POST'])
     def setup_database():
         try:
-            print("🔧 Manual database setup initiated...")
+            print("Manually database setup initiated...")
+            
+            # Debug: Check database connection
+            print(f"Database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
+            
+            # Import all models to ensure they're registered
+            from models import User, Event, Document, Action, Project, Notification, Resource, AttendanceRecord, DocumentAudit
+            
+            print("Models imported successfully!")
+            
+            # Force table creation with explicit metadata
+            print("Creating tables with explicit metadata...")
+            db.metadata.create_all(db.engine)
+            print("Tables created with metadata!")
+            
+            # Also try create_all as backup
             db.create_all()
-            print("✅ Database tables created successfully!")
+            print("Tables created with create_all!")
             
             # Create admin user
             admin_user = User.query.filter_by(username='admin').first()
             if not admin_user:
+                print("Creating admin user...")
                 admin_user = User(
                     username='admin',
                     email='admin@epom.local',
@@ -123,25 +139,39 @@ def create_app():
                 admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 db.session.add(admin_user)
                 db.session.commit()
-                print("✅ Admin user created!")
+                print("Admin user created!")
+                
+                # Verify admin user was created
+                verify_user = User.query.filter_by(username='admin').first()
+                if verify_user:
+                    print(f"Admin user verified: {verify_user.username}")
+                else:
+                    print("ERROR: Admin user verification failed!")
+                
                 return jsonify({
                     "status": "success",
                     "message": "Database setup completed!",
                     "admin_user": {
                         "username": "admin",
                         "password": "admin123"
-                    }
+                    },
+                    "tables_created": [table.name for table in db.metadata.tables.keys()]
                 })
             else:
+                print("Admin user already exists")
                 return jsonify({
                     "status": "success",
-                    "message": "Database already initialized"
+                    "message": "Database already initialized",
+                    "tables": [table.name for table in db.metadata.tables.keys()]
                 })
         except Exception as e:
-            print(f"❌ Database setup error: {str(e)}")
+            print(f"Database setup error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return jsonify({
                 "status": "error",
-                "message": f"Database setup failed: {str(e)}"
+                "message": f"Database setup failed: {str(e)}",
+                "database_url": app.config['SQLALCHEMY_DATABASE_URI']
             }), 500
 
     # --- TACTICAL THIRD-PARTY INTEGRATION (EMAIL) ---
