@@ -21,6 +21,13 @@ def create_app():
 
     # Database configuration - Force SQLite for Railway to bypass PostgreSQL issues completely
     print("🔗 Forcing SQLite database for Railway deployment")
+    
+    # Clear any Railway DATABASE_URL environment variable
+    if "DATABASE_URL" in os.environ:
+        del os.environ["DATABASE_URL"]
+        print("🗑️  Cleared Railway DATABASE_URL environment variable")
+    
+    # Force SQLite regardless of environment variables
     database_url = "sqlite:///epom_dev.db"
     
     print(f"🔗 Database URL: {database_url}")
