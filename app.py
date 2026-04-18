@@ -32,9 +32,30 @@ def create_app():
     jwt = JWTManager(app)
 
     with app.app_context():
-        # Only for dev, normally use migrations
-        # Tables manually provisioned via provision_mysql.py to bypass information_schema issue
-        pass
+        # Initialize database tables if they don't exist
+        try:
+            db.create_all()
+            print("✅ Database tables initialized successfully!")
+            
+            # Create default admin user if not exists
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                print("Creating default admin user...")
+                admin_user = User(
+                    username='admin',
+                    email='admin@epom.local',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='Admin',
+                    is_active=True,
+                    must_change_password=True
+                )
+                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Default admin user created! Username: admin, Password: admin123")
+        except Exception as e:
+            print(f"⚠️  Database initialization warning: {str(e)}")
 
     # Debugging: Log the database URL being used
     print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
