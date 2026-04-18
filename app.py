@@ -62,12 +62,87 @@ def create_app():
 
     @app.route('/api/health', methods=['GET'])
     def health_check():
-        return jsonify({
-            "status": "success", 
-            "message": "e-POM Backend is running!",
-            "api_version": "v2.2.0-MOBILE-READY",
-            "environment": "Operational"
-        })
+        try:
+            # Ensure database tables exist
+            db.create_all()
+            print("✅ Health check: Database tables ensured")
+            
+            # Check if admin user exists
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                print("Creating admin user from health check...")
+                admin_user = User(
+                    username='admin',
+                    email='admin@epom.local',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='Admin',
+                    is_active=True,
+                    must_change_password=True
+                )
+                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Admin user created from health check")
+            
+            return jsonify({
+                "status": "success", 
+                "message": "e-POM Backend is running!",
+                "api_version": "v2.2.0-MOBILE-READY",
+                "environment": "Operational",
+                "database": "connected"
+            })
+        except Exception as e:
+            print(f"❌ Health check error: {str(e)}")
+            return jsonify({
+                "status": "error", 
+                "message": f"Database setup failed: {str(e)}",
+                "api_version": "v2.2.0-MOBILE-READY",
+                "environment": "Error"
+            }), 500
+
+    @app.route('/api/setup-database', methods=['POST'])
+    def setup_database():
+        try:
+            print("🔧 Manual database setup initiated...")
+            db.create_all()
+            print("✅ Database tables created successfully!")
+            
+            # Create admin user
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                admin_user = User(
+                    username='admin',
+                    email='admin@epom.local',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='Admin',
+                    is_active=True,
+                    must_change_password=True
+                )
+                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Admin user created!")
+                return jsonify({
+                    "status": "success",
+                    "message": "Database setup completed!",
+                    "admin_user": {
+                        "username": "admin",
+                        "password": "admin123"
+                    }
+                })
+            else:
+                return jsonify({
+                    "status": "success",
+                    "message": "Database already initialized"
+                })
+        except Exception as e:
+            print(f"❌ Database setup error: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": f"Database setup failed: {str(e)}"
+            }), 500
 
     # --- TACTICAL THIRD-PARTY INTEGRATION (EMAIL) ---
     class TacticalMailer:
