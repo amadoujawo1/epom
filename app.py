@@ -19,13 +19,9 @@ def create_app():
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     CORS(app)  # Enable CORS for all routes
 
-    # Database configuration - Force SQLite for Railway to bypass PostgreSQL issues
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        print("🔗 Using PostgreSQL database")
-    else:
-        print("⚠️  DATABASE_URL not set, using SQLite fallback")
-        database_url = "sqlite:///epom_dev.db"
+    # Database configuration - Force SQLite for Railway to bypass PostgreSQL issues completely
+    print("🔗 Forcing SQLite database for Railway deployment")
+    database_url = "sqlite:///epom_dev.db"
     
     print(f"🔗 Database URL: {database_url}")
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
