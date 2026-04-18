@@ -1,0 +1,13 @@
+==================================================
+WEEKLY EXCEPTION REPORT (2026-W16)
+Generated: 2026-04-16 18:12:11
+==================================================
+
+Total Overdue Exceptions: 1
+
+[!] MNO 
+    Assignee: ajawo | Priority: Medium
+    Due: 2026-04-16
+
+Action Required by Department Leaders.
+==================================================
