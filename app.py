@@ -19,9 +19,15 @@ def create_app():
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     CORS(app)  # Enable CORS for all routes
 
-    # Database configuration
-    # Use SQLite if MySQL is not setup/configured properly yet for easy local dev fallback
-    database_url = os.getenv("DATABASE_URL", "sqlite:///epom_dev.db")
+    # Database configuration - Force PostgreSQL for Railway
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        print("❌ ERROR: DATABASE_URL environment variable not set!")
+        print("Please set DATABASE_URL in Railway environment variables")
+        # Fallback to SQLite for local development
+        database_url = "sqlite:///epom_dev.db"
+    
+    print(f"🔗 Database URL: {database_url}")
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "fallback-jwt-secret")
@@ -34,8 +40,15 @@ def create_app():
     with app.app_context():
         # Initialize database tables if they don't exist
         try:
+            print("🔧 Initializing database...")
+            
+            # Force table creation with explicit metadata
+            db.metadata.create_all(db.engine)
+            print("✅ Tables created with metadata!")
+            
+            # Also try create_all as backup
             db.create_all()
-            print("✅ Database tables initialized successfully!")
+            print("✅ Tables created with create_all!")
             
             # Create default admin user if not exists
             admin_user = User.query.filter_by(username='admin').first()
@@ -54,8 +67,25 @@ def create_app():
                 db.session.add(admin_user)
                 db.session.commit()
                 print("✅ Default admin user created! Username: admin, Password: admin123")
+                
+                # Verify admin user was created
+                verify_user = User.query.filter_by(username='admin').first()
+                if verify_user:
+                    print(f"✅ Admin user verified: {verify_user.username}")
+                else:
+                    print("❌ ERROR: Admin user verification failed!")
+            else:
+                print("✅ Admin user already exists")
+                
+            # List all tables to confirm creation
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            print(f"✅ Database tables verified: {existing_tables}")
+            
         except Exception as e:
-            print(f"⚠️  Database initialization warning: {str(e)}")
+            print(f"❌ Database initialization error: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     # Debugging: Log the database URL being used
     print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
