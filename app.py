@@ -101,6 +101,41 @@ def create_app():
                 "environment": "Error"
             }), 500
 
+    @app.route('/api/test-db', methods=['GET'])
+    def test_database_connection():
+        try:
+            print("Testing database connection...")
+            
+            # Test basic database connection
+            result = db.engine.execute("SELECT 1")
+            print("Database connection successful!")
+            
+            # Check if tables exist
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            print(f"Existing tables: {existing_tables}")
+            
+            # Check database URL
+            print(f"Database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
+            
+            return jsonify({
+                "status": "success",
+                "message": "Database connection working",
+                "database_url": app.config['SQLALCHEMY_DATABASE_URI'],
+                "existing_tables": existing_tables,
+                "connection_test": "PASSED"
+            })
+        except Exception as e:
+            print(f"Database connection test failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "status": "error",
+                "message": f"Database connection failed: {str(e)}",
+                "database_url": app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT_SET'),
+                "connection_test": "FAILED"
+            }), 500
+
     @app.route('/api/setup-database', methods=['POST'])
     def setup_database():
         try:
