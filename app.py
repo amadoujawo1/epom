@@ -19,15 +19,19 @@ def create_app():
     app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     CORS(app)  # Enable CORS for all routes
 
-    # Database configuration - Optimized for Railway PostgreSQL
-    database_url = os.getenv("DATABASE_URL")
-    
-    if database_url and database_url.startswith("postgresql"):
-        print(f"🔗 Using Railway PostgreSQL database")
-    elif database_url:
-        print(f"Using external database: {database_url}")
+    # Database configuration - Force SQLite for local development
+    # Check if we're in Railway environment
+    if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_SERVICE_NAME"):
+        # Railway deployment - use PostgreSQL from environment
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            print(f"🔗 Using Railway PostgreSQL database")
+        else:
+            print("⚠️ Railway environment but no DATABASE_URL set")
+            database_url = "sqlite:///epom_dev.db"
     else:
-        print("⚠️ DATABASE_URL not set, using SQLite fallback")
+        # Local development - force SQLite
+        print("🏠 Local development detected, forcing SQLite")
         database_url = "sqlite:///epom_dev.db"
     
     print(f"🔗 Database URL: {database_url}")
