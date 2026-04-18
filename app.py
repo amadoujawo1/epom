@@ -161,6 +161,34 @@ def create_app():
     @app.route('/api/auth/login', methods=['POST'])
     def login():
         try:
+            # Ensure database tables exist
+            try:
+                db.create_all()
+                print("✅ Database tables ensured to exist")
+            except Exception as db_error:
+                print(f"⚠️ Database table creation error: {db_error}")
+            
+            # Create admin user if not exists
+            try:
+                admin_user = User.query.filter_by(username='admin').first()
+                if not admin_user:
+                    print("Creating default admin user...")
+                    admin_user = User(
+                        username='admin',
+                        email='admin@epom.local',
+                        first_name='System',
+                        last_name='Administrator',
+                        role='Admin',
+                        is_active=True,
+                        must_change_password=True
+                    )
+                    admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    db.session.add(admin_user)
+                    db.session.commit()
+                    print("✅ Default admin user created!")
+            except Exception as admin_error:
+                print(f"⚠️ Admin user creation error: {admin_error}")
+            
             data = request.json
             user = User.query.filter_by(username=data.get('username')).first()
 
