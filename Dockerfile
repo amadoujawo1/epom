@@ -13,6 +13,8 @@ RUN npx tsc -b && npm run build
 # Use Python base image for backend
 FROM python:3.10-slim
 
+# Create and set working directory
+RUN mkdir -p /app
 WORKDIR /app
 
 # Install system dependencies
