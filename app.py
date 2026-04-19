@@ -169,6 +169,66 @@ def create_app():
                 "connection_test": "FAILED"
             }), 500
 
+    @app.route('/api/create-admin', methods=['POST'])
+    def create_admin_user():
+        """Dedicated endpoint to force create admin user"""
+        try:
+            print("🔧 Force creating admin user...")
+            
+            # Import User model
+            from models import User
+            
+            # Check if admin user already exists and delete if it does
+            existing_admin = User.query.filter_by(username='admin').first()
+            if existing_admin:
+                print("🗑️ Deleting existing admin user...")
+                db.session.delete(existing_admin)
+                db.session.commit()
+                print("✅ Existing admin user deleted")
+            
+            # Create new admin user
+            admin_user = User(
+                username='admin',
+                email='admin@epom.local',
+                first_name='System',
+                last_name='Administrator',
+                role='Admin',
+                is_active=True,
+                must_change_password=True
+            )
+            admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            db.session.add(admin_user)
+            db.session.commit()
+            print("✅ Admin user created successfully!")
+            
+            # Verify admin user was created
+            verify_user = User.query.filter_by(username='admin').first()
+            if verify_user:
+                print(f"✅ Admin user verified: {verify_user.username}")
+                return jsonify({
+                    "status": "success",
+                    "message": "Admin user created successfully!",
+                    "admin_user": {
+                        "username": "admin",
+                        "password": "admin123"
+                    }
+                })
+            else:
+                print("❌ ERROR: Admin user verification failed!")
+                return jsonify({
+                    "status": "error",
+                    "message": "Admin user creation verification failed"
+                }), 500
+                
+        except Exception as e:
+            print(f"❌ Admin creation error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "status": "error",
+                "message": f"Admin user creation failed: {str(e)}"
+            }), 500
+
     @app.route('/api/setup-database', methods=['POST'])
     def setup_database():
         try:
