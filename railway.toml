@@ -8,3 +8,11 @@ value = "18"
 [[build.env]]
 name = "PYTHON_VERSION"
 value = "3.10"
+
+[phases.setup]
+nixPkgs = ["...", "nodejs-18_x"]
+
+[phases.build]
+cmds = [
+  "cd frontend && npm install && npm run build && cd .."
+]
