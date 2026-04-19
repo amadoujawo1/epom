@@ -15,5 +15,8 @@ nixPkgs = ["...", "nodejs-18_x"]
 [phases.build]
 cmds = [
   "cd frontend && npm install && npm run build && cd ..",
-  "gunicorn --bind 0.0.0.0:8080 app:app"
+  "cd backend && gunicorn --bind 0.0.0.0:8080 app:app"
 ]
+
+[deploy]
+startCommand = "cd backend && gunicorn --bind 0.0.0.0:8080 app:app"
