@@ -7,7 +7,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 
 # Install frontend dependencies and build
-RUN npm install
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 # Use Python base image for backend
