@@ -57,7 +57,7 @@ Deploy the e-POM application to Railway with PostgreSQL database.
    - Choose `main` branch
 
 2. **Configure Build Settings**
-   - **Build Command**: `cd frontend && npm install && npm run build && cd ..`
+   - **Build Command**: `curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs && cd frontend && npm install && npm run build && cd ..`
    - **Start Command**: `gunicorn "app:app"`
    - **Port**: `8080`
 
