@@ -16,12 +16,21 @@ from cryptography.hazmat.primitives import padding
 load_dotenv()
 
 def create_app():
-    app = Flask(__name__, static_folder='../frontend/dist', static_url_path='')
+    app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
     CORS(app)  # Enable CORS for all routes
 
-    # Database configuration
-    # Use SQLite if MySQL is not setup/configured properly yet for easy local dev fallback
-    database_url = os.getenv("DATABASE_URL", "sqlite:///epom_dev.db")
+    # Database configuration - Support both Railway and local development
+    database_url = os.getenv("DATABASE_URL")
+    
+    if database_url and database_url.startswith("postgresql"):
+        print(f"🔗 Using Railway PostgreSQL database")
+    elif database_url:
+        print(f"Using external database: {database_url}")
+    else:
+        print("🏠 DATABASE_URL not set, using SQLite fallback")
+        database_url = "sqlite:///epom_dev.db"
+    
+    print(f"🔗 Database URL: {database_url}")
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "fallback-jwt-secret")
@@ -32,40 +41,210 @@ def create_app():
     jwt = JWTManager(app)
 
     with app.app_context():
-        db.create_all()
-        from init_admin import init_admin
-        init_admin()
+        # Initialize database tables if they don't exist
+        try:
+            print("🔧 Initializing database...")
+            
+            # Force table creation with explicit metadata
+            db.metadata.create_all(db.engine)
+            print("✅ Tables created with metadata!")
+            
+            # Also try create_all as backup
+            db.create_all()
+            print("✅ Tables created with create_all!")
+            
+            # Create default admin user if not exists
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                print("Creating default admin user...")
+                admin_user = User(
+                    username='admin',
+                    email='admin@epom.local',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='Admin',
+                    is_active=True,
+                    must_change_password=True
+                )
+                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Default admin user created! Username: admin, Password: admin123")
+                
+                # Verify admin user was created
+                verify_user = User.query.filter_by(username='admin').first()
+                if verify_user:
+                    print(f"✅ Admin user verified: {verify_user.username}")
+                else:
+                    print("❌ ERROR: Admin user verification failed!")
+            else:
+                print("✅ Admin user already exists")
+                
+            # List all tables to confirm creation
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            print(f"✅ Database tables verified: {existing_tables}")
+            
+        except Exception as e:
+            print(f"❌ Database initialization error: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     # Debugging: Log the database URL being used
     print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
 
     @app.route('/api/health', methods=['GET'])
     def health_check():
-        return jsonify({
-            "status": "success", 
-            "message": "e-POM Backend is running!",
-            "api_version": "v2.2.0-MOBILE-READY",
-            "environment": "Operational"
-        })
+        try:
+            # Ensure database tables exist
+            db.create_all()
+            print("✅ Health check: Database tables ensured")
+            
+            # Check if admin user exists
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                print("Creating admin user from health check...")
+                admin_user = User(
+                    username='admin',
+                    email='admin@epom.local',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='Admin',
+                    is_active=True,
+                    must_change_password=True
+                )
+                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Admin user created from health check")
+            
+            return jsonify({
+                "status": "success", 
+                "message": "e-POM Backend is running!",
+                "api_version": "v2.2.0-MOBILE-READY",
+                "environment": "Operational",
+                "database": "connected"
+            })
+        except Exception as e:
+            print(f"❌ Health check error: {str(e)}")
+            return jsonify({
+                "status": "error", 
+                "message": f"Database setup failed: {str(e)}",
+                "api_version": "v2.2.0-MOBILE-READY",
+                "environment": "Error"
+            }), 500
 
-    @app.route('/api/auth/me', methods=['GET'])
-    @jwt_required()
-    def get_me():
-        # Core REST endpoint for mobile/third-party profile verification
-        user_id = int(get_jwt_identity())
-        user = db.session.get(User, user_id)
-        if not user:
-            return jsonify({"error": "Identity verification failed"}), 404
-        return jsonify({
-            "id": user.id,
-            "username": user.username,
-            "role": user.role,
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "department": user.department,
-            "must_change_password": user.must_change_password
-        }), 200
+    @app.route('/api/test-db', methods=['GET'])
+    def test_database_connection():
+        try:
+            print("Testing database connection...")
+            
+            # Test basic database connection
+            result = db.engine.execute("SELECT 1")
+            print("Database connection successful!")
+            
+            # Check if tables exist
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            print(f"Existing tables: {existing_tables}")
+            
+            # Check database URL
+            print(f"Database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
+            
+            return jsonify({
+                "status": "success",
+                "message": "Database connection working",
+                "database_url": app.config['SQLALCHEMY_DATABASE_URI'],
+                "existing_tables": existing_tables,
+                "connection_test": "PASSED"
+            })
+        except Exception as e:
+            print(f"Database connection test failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "status": "error",
+                "message": f"Database connection failed: {str(e)}",
+                "database_url": app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT_SET'),
+                "connection_test": "FAILED"
+            }), 500
+
+    @app.route('/api/setup-database', methods=['POST'])
+    def setup_database():
+        try:
+            print("🔧 Manual database setup initiated...")
+            
+            # Use current database configuration (Railway PostgreSQL or fallback)
+            print(f"🔗 Using database URL: {app.config['SQLALCHEMY_DATABASE_URI']}")
+            
+            # Import all models to ensure they're registered
+            from models import User, Event, Document, Action, Project, Notification, Resource, AttendanceRecord, DocumentAudit
+            
+            print("✅ Models imported successfully!")
+            
+            # Force table creation with explicit metadata
+            print("📝 Creating tables with explicit metadata...")
+            db.metadata.create_all(db.engine)
+            print("✅ Tables created with metadata!")
+            
+            # Also try create_all as backup
+            print("📝 Creating tables with create_all...")
+            db.create_all()
+            print("✅ Tables created with create_all!")
+            
+            # Create admin user
+            print("👤 Checking for admin user...")
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                print("👤 Creating admin user...")
+                admin_user = User(
+                    username='admin',
+                    email='admin@epom.local',
+                    first_name='System',
+                    last_name='Administrator',
+                    role='Admin',
+                    is_active=True,
+                    must_change_password=True
+                )
+                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                db.session.add(admin_user)
+                db.session.commit()
+                print("✅ Admin user created!")
+                
+                # Verify admin user was created
+                verify_user = User.query.filter_by(username='admin').first()
+                if verify_user:
+                    print(f"✅ Admin user verified: {verify_user.username}")
+                else:
+                    print("❌ ERROR: Admin user verification failed!")
+                
+                return jsonify({
+                    "status": "success",
+                    "message": "Database setup completed!",
+                    "admin_user": {
+                        "username": "admin",
+                        "password": "admin123"
+                    },
+                    "tables_created": [table.name for table in db.metadata.tables.keys()],
+                    "database_url": app.config['SQLALCHEMY_DATABASE_URI']
+                })
+            else:
+                print("✅ Admin user already exists")
+                return jsonify({
+                    "status": "success",
+                    "message": "Database already initialized",
+                    "tables": [table.name for table in db.metadata.tables.keys()],
+                    "database_url": app.config['SQLALCHEMY_DATABASE_URI']
+                })
+        except Exception as e:
+            print(f"❌ Database setup error: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "status": "error",
+                "message": f"Database setup failed: {str(e)}",
+                "database_url": app.config['SQLALCHEMY_DATABASE_URI']
+            }), 500
 
     # --- TACTICAL THIRD-PARTY INTEGRATION (EMAIL) ---
     class TacticalMailer:
@@ -159,6 +338,34 @@ def create_app():
     @app.route('/api/auth/login', methods=['POST'])
     def login():
         try:
+            # Ensure database tables exist
+            try:
+                db.create_all()
+                print("✅ Database tables ensured to exist")
+            except Exception as db_error:
+                print(f"⚠️ Database table creation error: {db_error}")
+            
+            # Create admin user if not exists
+            try:
+                admin_user = User.query.filter_by(username='admin').first()
+                if not admin_user:
+                    print("Creating default admin user...")
+                    admin_user = User(
+                        username='admin',
+                        email='admin@epom.local',
+                        first_name='System',
+                        last_name='Administrator',
+                        role='Admin',
+                        is_active=True,
+                        must_change_password=True
+                    )
+                    admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    db.session.add(admin_user)
+                    db.session.commit()
+                    print("✅ Default admin user created!")
+            except Exception as admin_error:
+                print(f"⚠️ Admin user creation error: {admin_error}")
+            
             data = request.json
             user = User.query.filter_by(username=data.get('username')).first()
 
@@ -785,524 +992,52 @@ def create_app():
     @jwt_required()
     def get_document_audit(doc_id):
         from models import DocumentAudit, User
-        audits = db.session.query(DocumentAudit, User.username).join(User, DocumentAudit.user_id == User.id).filter(DocumentAudit.document_id == doc_id).order_by(DocumentAudit.timestamp.desc()).all()
+        current_user_id = int(get_jwt_identity())
+        current_user = db.session.get(User, current_user_id)
+        
+        # Only admins or document creators can view audit logs
+        doc = db.session.get(Document, doc_id)
+        if not doc or (current_user.role != 'Admin' and doc.uploaded_by != current_user_id):
+            return jsonify({"error": "Unauthorized"}), 403
+            
+        audits = DocumentAudit.query.filter_by(document_id=doc_id).order_by(DocumentAudit.created_at.desc()).all()
         return jsonify([{
-            "id": a.DocumentAudit.id,
-            "action": a.DocumentAudit.action,
-            "username": a.username,
-            "timestamp": a.DocumentAudit.timestamp.isoformat()
+            "id": a.id,
+            "action": a.action,
+            "user_id": a.user_id,
+            "username": User.query.get(a.user_id).username if User.query.get(a.user_id) else "Unknown",
+            "created_at": a.created_at.isoformat()
         } for a in audits]), 200
 
-    @app.route('/api/documents/<int:doc_id>', methods=['PUT'])
+    @app.route('/api/documents/<int:doc_id>/audit', methods=['POST'])
     @jwt_required()
-    def update_document_status(doc_id):
-        from models import DocumentAudit, User
-        doc = Document.query.get_or_404(doc_id)
-        data = request.json
-        current_user_id = int(get_jwt_identity())
-        user = db.session.get(User, current_user_id)
-        
-        if 'status' in data:
-            old_status = doc.status
-            new_status = data['status']
-            
-            # Workflow Control Logic
-            is_owner = doc.uploaded_by == current_user_id
-            can_update = False
-            
-            # 1. Staff can submit Draft -> Pending Leader Clearance or request re-review
-            if user.role == 'Staff' and is_owner:
-                if new_status in ['Pending Leader Clearance', 'Draft']:
-                    can_update = True
-            
-            # 2. Leader can Clear or Request Revision
-            if user.role == 'Leader':
-                if new_status in ['Leader Cleared', 'Revision Required', 'Draft', 'Pending Leader Clearance']:
-                    can_update = True
-            
-            # 3. Admin has master control
-            if user.role == 'Admin':
-                can_update = True
-            
-            if not can_update:
-                return jsonify({"error": "Unauthorized to advance document to this stage"}), 403
-
-            doc.status = new_status
-            audit = DocumentAudit(
-                document_id=doc.id,
-                user_id=current_user_id,
-                action=f"Clearance Update: from {old_status} to {new_status}"
-            )
-            db.session.add(audit)
-            
-        db.session.commit()
-        return jsonify({"message": "Document clearance state updated"}), 200
-
-    @app.route('/api/reports/weekly', methods=['POST'])
-    @jwt_required()
-    @role_required('Admin')
-    def generate_weekly_report():
-        from models import Action, Document, User, db
-        import csv
-        import io
-        import os
-        from datetime import datetime, timezone
-        
-        try:
-            now = datetime.now(timezone.utc)
-            # Scan for exceptions: Overdue (non-completed) OR Critical priority
-            exceptions = Action.query.filter(
-                db.or_(
-                    db.and_(Action.due_date < now, Action.status != 'Completed'),
-                    Action.priority == 'Critical'
-                )
-            ).all()
-            
-            if not exceptions:
-                return jsonify({"message": "Operational Compliance: No exceptions found for the reporting period."}), 200
-            
-            # Generate formal CSV
-            output = io.StringIO()
-            writer = csv.writer(output)
-            writer.writerow(['Directive Title', 'Assigned Owner', 'Deadline', 'Priority', 'Current Status'])
-            
-            for act in exceptions:
-                # Resolve owner name
-                owner = db.session.get(User, act.assigned_to)
-                owner_name = owner.username if owner else "Unknown"
-                writer.writerow([act.title, owner_name, act.due_date.isoformat(), act.priority, act.status])
-            
-            # Save to FS and Registry
-            report_title = f"WEEKLY EXCEPTION REPORT - {now.strftime('%Y-%m-%d')}"
-            filename = f"weekly_exception_{now.strftime('%Y%m%d_%H%M%S')}.csv"
-            upload_dir = os.path.join(app.root_path, 'uploads')
-            
-            if not os.path.exists(upload_dir):
-                os.makedirs(upload_dir)
-            
-            with open(os.path.join(upload_dir, filename), 'w', newline='') as f:
-                f.write(output.getvalue())
-            
-            current_user_id = int(get_jwt_identity())
-            new_doc = Document(
-                title=report_title,
-                file_path=filename,
-                category="Strategic",
-                doc_type="Official Report",
-                status="Archived",
-                uploaded_by=current_user_id
-            )
-            db.session.add(new_doc)
-            db.session.commit()
-            
-            return jsonify({
-                "message": f"Strategic Report Generated: {report_title}",
-                "count": len(exceptions),
-                "document_id": new_doc.id
-            }), 201
-            
-        except Exception as e:
-            return jsonify({"error": f"Report Generation Failure: {str(e)}"}), 500
-
-    @app.route('/api/documents/template', methods=['POST'])
-    @jwt_required()
-    def create_document_from_template():
+    def create_document_audit(doc_id):
         from models import DocumentAudit
-        data = request.json
         current_user_id = int(get_jwt_identity())
-        
-        new_doc = Document(
-            title=data.get('title', 'Untitled Note'),
-            file_path="digitized_note",
-            status="Draft",
-            category=data.get('category', 'Internal'),
-            doc_type=data.get('doc_type', 'Briefing Note'),
-            content=data.get('content', ''),
-            uploaded_by=current_user_id
-        )
-        db.session.add(new_doc)
-        db.session.flush() # Get ID
+        data = request.json
         
         audit = DocumentAudit(
-            document_id=new_doc.id,
+            document_id=doc_id,
             user_id=current_user_id,
-            action=f"Digitized {new_doc.doc_type} created"
+            action=data.get('action', 'viewed')
         )
         db.session.add(audit)
         db.session.commit()
-        return jsonify({"message": "Digitized note created", "id": new_doc.id}), 201
+        return jsonify({"message": "Audit log created"}), 201
 
-    @app.route('/api/documents/<int:doc_id>', methods=['DELETE'])
-    @jwt_required()
-    @role_required('Admin')
-    def delete_document(doc_id):
-        from models import Document, DocumentAudit, db
-        import os
-        doc = Document.query.get_or_404(doc_id)
-        
-        # If it's a physical file, remove from disk
-        if doc.file_path != 'digitized_note':
-            file_path = os.path.join(app.root_path, 'uploads', doc.file_path)
-            if os.path.exists(file_path):
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    print(f"Error removing physical file: {str(e)}")
-        
-        # Remove associated audits before deleting document to avoid FK violations
-        DocumentAudit.query.filter_by(document_id=doc_id).delete()
-        
-        db.session.delete(doc)
-        db.session.commit()
-        return jsonify({"message": "Document and associated history permanently expunged"}), 200
-
-    @app.route('/api/reports/audit/download', methods=['GET'])
-    def download_audit_report():
-        # Allow token to be passed via query parameter for browser window.open support
-        token = request.args.get('token')
-        if not token:
-            # If not in query, check standard header manually
-            auth_header = request.headers.get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                token = auth_header.split(" ")[1]
-        
-        if not token:
-            return jsonify({"error": "Missing authorization token"}), 401
-            
-        try:
-            from flask_jwt_extended import decode_token
-            decoded = decode_token(token) # Validates the token
-            current_user_id = decoded['sub']
-            # Re-implement @role_required manually
-            from models import User
-            user = db.session.get(User, int(current_user_id))
-            if not user or user.role != 'Admin':
-                return jsonify({"error": "Unauthorized role-based access"}), 403
-        except Exception as e:
-            return jsonify({"error": "Invalid token"}), 401
-
-        import csv
-        import io
-        from flask import make_response
-        from models import DocumentAudit, Document, User
-        
-        # Get all audit trails joined with document titles and usernames
-        query = db.session.query(
-            DocumentAudit.timestamp,
-            Document.title,
-            User.username,
-            DocumentAudit.action
-        ) \
-        .join(Document, DocumentAudit.document_id == Document.id) \
-        .join(User, DocumentAudit.user_id == User.id) \
-        .order_by(DocumentAudit.timestamp.desc())
-        
-        results = query.all()
-        
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Timestamp', 'Document Title', 'User', 'Action'])
-        
-        for r in results:
-            writer.writerow([r.timestamp.isoformat(), r.title, r.username, r.action])
-        
-        response = make_response(output.getvalue())
-        response.headers["Content-Disposition"] = f"attachment; filename=epom_audit_trail_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
-        response.headers["Content-type"] = "text/csv"
-        return response
-
-    @app.route('/api/documents/upload', methods=['POST'])
-    @jwt_required()
-    def upload_document():
-        from models import DocumentAudit, User, Document, db
-        if 'file' not in request.files:
-            return jsonify({"error": "No file part"}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({"error": "No selected file"}), 400
-            
-        if file:
-            filename = secure_filename(file.filename)
-            upload_dir = os.path.join(app.root_path, 'uploads')
-            try:
-                if not os.path.exists(upload_dir):
-                    os.makedirs(upload_dir)
-                
-                file_path = os.path.join(upload_dir, filename)
-                
-                # AES 256 Encryption BEFORE saving
-                file_bytes = file.read()
-                encrypted_bytes, iv = encrypt_data(file_bytes)
-                
-                with open(file_path, "wb") as f:
-                    f.write(encrypted_bytes)
-                    
-            except Exception as e:
-                return jsonify({"error": f"FileSystem Error: {str(e)}"}), 500
-            
-            # Get category from form data
-            category = request.form.get('category', 'Internal')
-            
-            current_user_id = int(get_jwt_identity())
-            user = db.session.get(User, current_user_id)
-            if not user:
-                return jsonify({"error": "User context invalid"}), 401
-
-            if category == 'Restricted' and user.role != 'Admin':
-                # Remove saved file to avoid orphans
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                return jsonify({"error": "Unauthorized to upload Restricted documents"}), 403
-            
-            try:
-                new_doc = Document(
-                    title=request.form.get('title', filename),
-                    file_path=filename,
-                    category=category,
-                    doc_type=request.form.get('doc_type', 'Official'),
-                    uploaded_by=current_user_id,
-                    is_encrypted=True,
-                    encryption_iv=iv
-                )
-                db.session.add(new_doc)
-                db.session.flush()
-                
-                audit = DocumentAudit(
-                    document_id=new_doc.id,
-                    user_id=current_user_id,
-                    action="File uploaded"
-                )
-                db.session.add(audit)
-                db.session.commit()
-                return jsonify({"message": "File uploaded successfully"}), 201
-            except Exception as e:
-                db.session.rollback()
-                return jsonify({"error": f"Database Error: {str(e)}"}), 500
-
-    @app.route('/api/documents/download/<filename>', methods=['GET'])
-    def download_document(filename):
-        # Allow token to be passed via query parameter for browser window.open support
-        token = request.args.get('token')
-        if token and token.startswith('Bearer '):
-            token = token.split(" ")[1]
-            
-        if not token:
-            # If not in query, check standard header manually
-            auth_header = request.headers.get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                token = auth_header.split(" ")[1]
-        
-        if not token:
-            return jsonify({"error": "Missing authorization token"}), 401
-            
-        try:
-            from flask_jwt_extended import decode_token
-            decoded = decode_token(token) 
-            if not decoded:
-                raise Exception("Empty decode")
-        except Exception as e:
-            print(f"[AUTH ERROR] Document retrieval token failed: {str(e)}", flush=True)
-            return jsonify({"error": "Invalid token"}), 401
-
-        from flask import make_response
-        import os
-        import mimetypes
-        from models import Document, db
-        
-        # Resolve Document record to check encryption
-        doc_record = Document.query.filter_by(file_path=filename).first()
-        if not doc_record:
-            return jsonify({"error": "Resource not found"}), 404
-
-        upload_dir = os.path.join(app.root_path, 'uploads')
-        file_path = os.path.join(upload_dir, filename)
-        
-        if not os.path.exists(file_path):
-             return jsonify({"error": "Physical file missing"}), 404
-
-        should_download = request.args.get('download') == 'true'
-        
-        # Read and decrypt on-the-fly
-        with open(file_path, "rb") as f:
-            content_bytes = f.read()
-            
-        if doc_record.is_encrypted and doc_record.encryption_iv:
-            content_bytes = decrypt_data(content_bytes, doc_record.encryption_iv)
-            
-        # Explicit MIME type guessing
-        mime_type, _ = mimetypes.guess_type(filename)
-        if filename.lower().endswith('.pdf'):
-            mime_type = 'application/pdf'
-        elif filename.lower().endswith('.txt') or filename.lower().endswith('.csv'):
-            mime_type = 'text/plain'
-        elif filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-            mime_type = 'image/' + filename.lower().split('.')[-1].replace('jpg', 'jpeg')
-            
-        response = make_response(content_bytes)
-        response.headers["Content-Type"] = mime_type
-        
-        if should_download:
-            response.headers["Content-Disposition"] = f"attachment; filename={filename}"
-        else:
-            response.headers["Content-Disposition"] = "inline"
-            
-        return response
-
-
-
-
-
-    def run_background_jobs(app_instance):
-        import time
-        import threading
-        from models import db, Document, Action, User
-        from datetime import datetime, timezone
-
-        def job_runner():
-            with app_instance.app_context():
-                # Initial delay to ensure db is ready
-                time.sleep(5)
-                while True:
-                    try:
-                        now = datetime.now(timezone.utc)
-                        # 1. Automatic Reminders (Logged for the system / email proxy)
-                        overdue_actions = Action.query.filter(Action.status != 'Completed', Action.due_date < now).all()
-                        for action in overdue_actions:
-                            user = db.session.get(User, action.assigned_to)
-                            print(f"[SYSTEM REMINDER] Directive '{action.title}' assigned to {user.username if user else 'Unknown'} is OVERDUE!", flush=True)
-                            
-                            # Third-party integration: Email alert for overdue critical paths
-                            if user and user.email:
-                                TacticalMailer.send(
-                                    subject=f"[CRITICAL] Overdue Directive: {action.title}",
-                                    recipient=user.email,
-                                    body=f"Tactical Reminder: The directive '{action.title}' has exceeded its operational deadline. Immediate action is required.",
-                                    priority="High"
-                                )
-
-                        # 1.5 Meeting Reminders (upcoming in 15 mins)
-                        from models import Event, Notification
-                        import json
-                        upcoming_events = Event.query.filter(
-                            (Event.start_time > now) & 
-                            (Event.start_time <= datetime.fromtimestamp(now.timestamp() + 900, tz=timezone.utc))
-                        ).all()
-                        for event in upcoming_events:
-                            msg = f"Upcoming Meeting: {event.title} starting soon at {event.location or 'Scheduled Location'}"
-                            # Notify creator
-                            # Check if notification already exists to avoid spam
-                            exists = Notification.query.filter_by(user_id=event.user_id, message=msg).first()
-                            if not exists:
-                                n = Notification(user_id=event.user_id, message=msg, link="/calendar")
-                                db.session.add(n)
-                            
-                            # Notify mandatory attendees
-                            try:
-                                attendees = json.loads(event.mandatory_attendees or '[]')
-                                for uid in attendees:
-                                    if not Notification.query.filter_by(user_id=int(uid), message=msg).first():
-                                        n = Notification(user_id=int(uid), message=msg, link="/calendar")
-                                        db.session.add(n)
-                                        # Email Integration
-                                        target_user = db.session.get(User, int(uid))
-                                        if target_user and target_user.email:
-                                            TacticalMailer.send(
-                                                subject=f"Tactical Brief: {event.title} Commencing Soon",
-                                                recipient=target_user.email,
-                                                body=f"Operational Synchrony: {event.title} is starting at {event.start_time}.\nLocation: {event.location}\nLink: {event.meeting_link}"
-                                            )
-                            except: pass
-                        db.session.commit()
-
-                        # 2. Generate Exception Report Automatically
-                        if overdue_actions:
-                            # We only generate if overdue tasks exist, giving it a unique weekly name based on year-week
-                            week_str = f"{now.year}-W{now.isocalendar()[1]}"
-                            report_title = f"Exception Report - {week_str}"
-                            
-                            # Check if report already exists for this week
-                            existing = Document.query.filter_by(title=report_title).first()
-                            if not existing:
-                                import os
-                                filename = f"exception_report_{week_str}.txt"
-                                upload_dir = os.path.join(app_instance.root_path, 'uploads')
-                                if not os.path.exists(upload_dir):
-                                    os.makedirs(upload_dir)
-                                
-                                path = os.path.join(upload_dir, filename)
-                                with open(path, "w", encoding="utf-8") as f:
-                                    f.write("="*50 + "\n")
-                                    f.write(f"WEEKLY EXCEPTION REPORT ({week_str})\n")
-                                    f.write(f"Generated: {now.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                                    f.write("="*50 + "\n\n")
-                                    f.write(f"Total Overdue Exceptions: {len(overdue_actions)}\n\n")
-                                    
-                                    for act in overdue_actions:
-                                        u = db.session.get(User, act.assigned_to)
-                                        username = u.username if u else "Unknown"
-                                        f.write(f"[!] {act.title}\n")
-                                        f.write(f"    Assignee: {username} | Priority: {act.priority}\n")
-                                        f.write(f"    Due: {act.due_date.strftime('%Y-%m-%d') if act.due_date else 'Unknown'}\n\n")
-                                    
-                                    f.write("Action Required by Department Leaders.\n")
-                                    f.write("="*50 + "\n")
-
-                                admin = User.query.filter_by(role='Admin').first()
-                                admin_id = admin.id if admin else 1
-
-                                new_doc = Document(
-                                    title=report_title,
-                                    file_path=filename,
-                                    category="Strategic",
-                                    uploaded_by=admin_id
-                                )
-                                db.session.add(new_doc)
-                                db.session.commit()
-                                print(f"[SYSTEM] Generated {report_title}", flush=True)
-                                
-                    except Exception as e:
-                        print(f"[SYSTEM ERROR] in background jobs: {e}", flush=True)
-                    
-                    # Sleep for a significant amount of time (e.g., 5 minutes for demo/testing, 
-                    # in production it would check once a day)
-                    time.sleep(300)
-
-        t = threading.Thread(target=job_runner, daemon=True)
-        t.start()
-
-    # Start the daemon
-    run_background_jobs(app)
-
-
+    # Serve frontend
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
-    def serve(path):
-        # Never intercept API calls
-        if path.startswith('api/'):
-            from flask import abort
-            abort(404)
-        # Serve existing static assets (js, css, images, etc.)
-        full_path = os.path.join(app.static_folder, path)
-        if path and os.path.isfile(full_path):
+    def serve_frontend(path):
+        if path != "" and os.path.exists(app.static_folder + '/' + path):
             return send_from_directory(app.static_folder, path)
-        # For any SPA route (dashboard, calendar, etc.) return index.html
-        return send_from_directory(app.static_folder, 'index.html')
-
-    @app.errorhandler(404)
-    def not_found(e):
-        # Return index.html for any non-API 404 so the React router handles it
-        from flask import request as req
-        if req.path.startswith('/api/'):
-            return jsonify({'error': 'Not found'}), 404
-        try:
+        else:
             return send_from_directory(app.static_folder, 'index.html')
-        except Exception:
-            return jsonify({'error': 'Not found'}), 404
 
     return app
 
+# Create app instance for deployment
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5007)
+    app.run(debug=True, host='0.0.0.0', port=8000)
