@@ -57,24 +57,15 @@ Deploy the e-POM application to Railway with PostgreSQL database.
    - Choose `main` branch
 
 2. **Configure Build Settings**
-   - **Build Command**: `cd frontend && npm install && npm run build && cd ..`
-   - **Start Command**: `gunicorn "app:app"`
+   - **Build Method**: Use Dockerfile (recommended)
+   - **Build Command**: (Leave empty - Dockerfile handles build)
+   - **Start Command**: (Leave empty - Dockerfile handles start)
    - **Port**: `8080`
 
-3. **Create railway.toml file** (if not already exists)
-   - Create `railway.toml` in root directory with:
-   ```toml
-   [build]
-   builder = "NIXPACKS"
-   
-   [[build.env]]
-   name = "NODE_VERSION"
-   value = "18"
-   
-   [[build.env]]
-   name = "PYTHON_VERSION"
-   value = "3.10"
-   ```
+3. **Dockerfile Configuration**
+   - A `Dockerfile` is already included in the repository
+   - It handles both frontend build and backend setup
+   - Uses multi-stage build for optimal image size
 
 ## Step 3: Configure Environment Variables
 
