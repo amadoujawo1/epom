@@ -8,6 +8,7 @@ COPY frontend/ ./
 
 # Install frontend dependencies and build
 RUN npm install --legacy-peer-deps
+RUN chmod +x node_modules/.bin/*
 RUN npm run build
 
 # Use Python base image for backend
