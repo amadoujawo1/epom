@@ -32,9 +32,9 @@ def create_app():
     jwt = JWTManager(app)
 
     with app.app_context():
-        # Only for dev, normally use migrations
-        # Tables manually provisioned via provision_mysql.py to bypass information_schema issue
-        pass
+        db.create_all()
+        from init_admin import init_admin
+        init_admin()
 
     # Debugging: Log the database URL being used
     print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")

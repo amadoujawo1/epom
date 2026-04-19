@@ -1,5 +1,5 @@
 # Use Node.js base image for frontend build
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -8,7 +8,8 @@ COPY frontend/ ./
 
 # Install frontend dependencies and build
 RUN npm install --legacy-peer-deps
-RUN npx tsc -b && npm run build
+RUN chmod +x node_modules/.bin/*
+RUN npm run build
 
 # Use Python base image for backend
 FROM python:3.10-slim
