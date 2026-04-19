@@ -8,7 +8,7 @@ COPY frontend/ ./
 
 # Install frontend dependencies and build
 RUN npm install --legacy-peer-deps
-RUN npm run build
+RUN npx tsc -b && npm run build
 
 # Use Python base image for backend
 FROM python:3.10-slim
