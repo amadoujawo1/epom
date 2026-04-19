@@ -33,6 +33,8 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        from init_admin import init_admin
+        init_admin()
 
     # Debugging: Log the database URL being used
     print(f"Using database: {app.config['SQLALCHEMY_DATABASE_URI']}")
