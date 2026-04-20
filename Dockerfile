@@ -1,4 +1,5 @@
 # Use Node.js base image for frontend build
+# Build timestamp: 2025-04-20-20-00
 FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
