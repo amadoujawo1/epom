@@ -1069,6 +1069,174 @@ def create_app():
             "created_at": a.created_at.isoformat()
         } for a in audits]), 200
 
+    @app.route('/api/documents/template', methods=['POST'])
+    @jwt_required()
+    def create_document_template():
+        from models import Document
+        current_user_id = int(get_jwt_identity())
+        
+        try:
+            data = request.json
+            if not data or 'title' not in data:
+                return jsonify({"error": "Missing document title"}), 400
+            
+            new_doc = Document(
+                title=data['title'],
+                category=data.get('category', 'Internal'),
+                doc_type=data.get('doc_type', 'Briefing Note'),
+                content=data.get('content', ''),
+                file_path='digitized_note',
+                status='Draft',
+                uploaded_by=current_user_id
+            )
+            
+            db.session.add(new_doc)
+            db.session.commit()
+            
+            return jsonify({
+                "message": "Document created successfully",
+                "id": new_doc.id,
+                "title": new_doc.title,
+                "status": new_doc.status
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating document template: {str(e)}")
+            return jsonify({"error": f"Failed to create document: {str(e)}"}), 500
+
+    @app.route('/api/documents/upload', methods=['POST'])
+    @jwt_required()
+    def upload_document_file():
+        from models import Document
+        from werkzeug.utils import secure_filename
+        import os
+        current_user_id = int(get_jwt_identity())
+        
+        try:
+            if 'file' not in request.files:
+                return jsonify({"error": "No file provided"}), 400
+            
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({"error": "No file selected"}), 400
+            
+            # Create uploads directory if it doesn't exist
+            upload_dir = 'uploads'
+            if not os.path.exists(upload_dir):
+                os.makedirs(upload_dir)
+            
+            # Secure filename and save
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(upload_dir, filename)
+            file.save(file_path)
+            
+            # Create document record
+            new_doc = Document(
+                title=request.form.get('title', filename),
+                category=request.form.get('category', 'Internal'),
+                doc_type=request.form.get('doc_type', 'Uploaded File'),
+                content=f"Physical file uploaded: {filename}",
+                file_path=file_path,
+                status='Draft',
+                uploaded_by=current_user_id
+            )
+            
+            db.session.add(new_doc)
+            db.session.commit()
+            
+            return jsonify({
+                "message": "File uploaded successfully",
+                "id": new_doc.id,
+                "title": new_doc.title,
+                "filename": filename,
+                "status": new_doc.status
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error uploading file: {str(e)}")
+            return jsonify({"error": f"Failed to upload file: {str(e)}"}), 500
+
+    @app.route('/api/documents/download/<path:filename>', methods=['GET'])
+    def download_document(filename):
+        from flask import send_from_directory
+        try:
+            # For digitized notes, return content as text file
+            if filename == 'digitized_note':
+                # This should not happen here, but handle gracefully
+                return jsonify({"error": "Invalid download request"}), 400
+            
+            # For uploaded files, serve from uploads directory
+            return send_from_directory('uploads', filename, as_attachment=request.args.get('download', 'false') == 'true')
+        except Exception as e:
+            print(f"Error downloading file: {str(e)}")
+            return jsonify({"error": "File not found"}), 404
+
+    @app.route('/api/documents/<int:doc_id>', methods=['PUT'])
+    @jwt_required()
+    def update_document(doc_id):
+        from models import Document
+        current_user_id = int(get_jwt_identity())
+        current_user = db.session.get(User, current_user_id)
+        
+        doc = db.session.get(Document, doc_id)
+        if not doc:
+            return jsonify({"error": "Document not found"}), 404
+        
+        # Only admins or document creators can update
+        if current_user.role != 'Admin' and doc.uploaded_by != current_user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+        
+        try:
+            data = request.json
+            if 'status' in data:
+                doc.status = data['status']
+            if 'title' in data:
+                doc.title = data['title']
+            if 'category' in data:
+                doc.category = data['category']
+            if 'content' in data:
+                doc.content = data['content']
+            
+            db.session.commit()
+            return jsonify({"message": "Document updated successfully"}), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error updating document: {str(e)}")
+            return jsonify({"error": f"Failed to update document: {str(e)}"}), 500
+
+    @app.route('/api/documents/<int:doc_id>', methods=['DELETE'])
+    @jwt_required()
+    def delete_document(doc_id):
+        from models import Document
+        current_user_id = int(get_jwt_identity())
+        current_user = db.session.get(User, current_user_id)
+        
+        doc = db.session.get(Document, doc_id)
+        if not doc:
+            return jsonify({"error": "Document not found"}), 404
+        
+        # Only admins or document creators can delete
+        if current_user.role != 'Admin' and doc.uploaded_by != current_user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+        
+        try:
+            # Delete uploaded file if it exists
+            import os
+            if doc.file_path and doc.file_path != 'digitized_note' and os.path.exists(doc.file_path):
+                os.remove(doc.file_path)
+            
+            db.session.delete(doc)
+            db.session.commit()
+            return jsonify({"message": "Document deleted successfully"}), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error deleting document: {str(e)}")
+            return jsonify({"error": f"Failed to delete document: {str(e)}"}), 500
+
     @app.route('/api/documents/<int:doc_id>/audit', methods=['POST'])
     @jwt_required()
     def create_document_audit(doc_id):
