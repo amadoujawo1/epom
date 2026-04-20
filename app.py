@@ -492,12 +492,60 @@ def create_app():
         }), 200
 
 
-    @app.route('/api/users', methods=['GET'])
+    @app.route('/api/users', methods=['GET', 'POST'])
     @jwt_required()
-    def get_users():
-        # Accessible to all users so they can see colleagues for task assignments
-        users = User.query.all()
-        return jsonify([{"id": u.id, "username": u.username, "first_name": u.first_name, "last_name": u.last_name, "role": u.role, "email": u.email, "is_active": u.is_active, "department": u.department} for u in users]), 200
+    @role_required('Admin')
+    def handle_users():
+        if request.method == 'GET':
+            # Accessible to all users so they can see colleagues for task assignments
+            users = User.query.all()
+            return jsonify([{"id": u.id, "username": u.username, "first_name": u.first_name, "last_name": u.last_name, "role": u.role, "email": u.email, "is_active": u.is_active, "department": u.department} for u in users]), 200
+        
+        elif request.method == 'POST':
+            # Admin can create new users
+            data = request.json
+            if not data or not all(k in data for k in ['username', 'email', 'first_name', 'last_name', 'role', 'password']):
+                return jsonify({"error": "Missing required fields"}), 400
+            
+            # Check if username already exists
+            existing_user = User.query.filter_by(username=data['username']).first()
+            if existing_user:
+                return jsonify({"error": "Username already exists"}), 400
+            
+            # Check if email already exists
+            existing_email = User.query.filter_by(email=data['email'].lower()).first()
+            if existing_email:
+                return jsonify({"error": "Email already exists"}), 400
+            
+            # Create new user
+            new_user = User(
+                username=data['username'],
+                email=data['email'].lower(),
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                role=data['role'],
+                department=data.get('department', ''),
+                is_active=True,
+                must_change_password=False
+            )
+            new_user.password_hash = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
+            return jsonify({
+                "message": "User created successfully",
+                "user": {
+                    "id": new_user.id,
+                    "username": new_user.username,
+                    "first_name": new_user.first_name,
+                    "last_name": new_user.last_name,
+                    "role": new_user.role,
+                    "email": new_user.email,
+                    "is_active": new_user.is_active,
+                    "department": new_user.department
+                }
+            }), 201
 
     @app.route('/api/users/<int:user_id>/status', methods=['PUT'])
     @jwt_required()
