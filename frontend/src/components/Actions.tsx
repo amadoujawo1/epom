@@ -71,6 +71,10 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
       setActions(actionsRes.data);
       setPersonnel(usersRes.data);
       setProjects(projectsRes.data);
+      
+      // Debug: Log personnel data
+      console.log('Personnel data loaded:', usersRes.data);
+      console.log('Number of personnel:', usersRes.data?.length || 0);
     } catch (err: unknown) {
       console.error("Failed to fetch action data", err);
     } finally {
@@ -274,9 +278,13 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
                         className="w-full px-6 py-4.5 bg-slate-50 border-0 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 font-bold appearance-none cursor-pointer transition-all focus:bg-white pr-10"
                       >
                         <option value="" disabled>{lang === 'fr' ? 'Sélectionner le personnel...' : 'Select personnel...'}</option>
-                        {personnel.map(p => (
-                          <option key={p.id} value={p.id}>{p.username} ({p.role})</option>
-                        ))}
+                        {personnel.length === 0 ? (
+                          <option value="" disabled>No personnel available - Check console for debug info</option>
+                        ) : (
+                          personnel.map(p => (
+                            <option key={p.id} value={p.id}>{p.username} ({p.role})</option>
+                          ))
+                        )}
                       </select>
                     </div>
                   </div>
