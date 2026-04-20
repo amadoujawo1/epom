@@ -64,7 +64,7 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
 
       const [actionsRes, usersRes, projectsRes] = await Promise.all([
         axios.get(`/api/actions`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`/api/users`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`/api/personnel`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`/api/projects`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
 

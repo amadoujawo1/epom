@@ -615,6 +615,21 @@ def create_app():
         db.session.commit()
         return jsonify({"message": "User updated successfully"}), 200
 
+    @app.route('/api/personnel', methods=['GET'])
+    @jwt_required()
+    def get_personnel():
+        """Simple personnel endpoint that doesn't depend on actions table"""
+        from models import User
+        users = User.query.all()
+        return jsonify([{
+            "id": u.id,
+            "username": u.username,
+            "first_name": u.first_name,
+            "last_name": u.last_name,
+            "role": u.role,
+            "email": u.email
+        } for u in users]), 200
+
     @app.route('/api/users/<int:user_id>', methods=['DELETE'])
     @jwt_required()
     @role_required('Admin')
