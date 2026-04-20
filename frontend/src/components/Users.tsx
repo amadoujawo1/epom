@@ -27,7 +27,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [formData, setFormData] = useState({ first_name: '', last_name: '', username: '', email: '', password: '', confirmPassword: '', role: 'Staff', department: '' });
+  const [formData, setFormData] = useState({ first_name: '', last_name: '', username: '', email: '', password: '', confirmPassword: '', role: 'Assistant', department: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -87,7 +87,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
         setSuccess(lang === 'fr' ? 'Personnel ajouté avec succès !' : 'Personnel added successfully!');
       }
 
-      setFormData({ first_name: '', last_name: '', username: '', email: '', password: '', confirmPassword: '', role: 'Staff', department: '' });
+      setFormData({ first_name: '', last_name: '', username: '', email: '', password: '', confirmPassword: '', role: 'Assistant', department: '' });
       setShowAddForm(false);
       setEditingUser(null);
       fetchUsers();
@@ -154,7 +154,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
             <button
               onClick={() => {
                 setEditingUser(null);
-                setFormData({ first_name: '', last_name: '', username: '', email: '', password: '', confirmPassword: '', role: 'Staff', department: '' });
+                setFormData({ first_name: '', last_name: '', username: '', email: '', password: '', confirmPassword: '', role: 'Assistant', department: '' });
                 setError('');
                 setSuccess('');
                 setShowAddForm(true);
@@ -286,16 +286,11 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
                         onChange={e => setFormData({ ...formData, role: e.target.value })}
                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
                       >
-                        <option value="Permanent Secretary">{t.roles?.permanent_secretary || 'Permanent Secretary'}</option>
-                        <option value="Deputy Permanent Secretary">{t.roles?.deputy_permanent_secretary || 'Deputy Permanent Secretary'}</option>
-                        <option value="Director">{t.roles?.director || 'Director'}</option>
-                        <option value="Deputy Director">{t.roles?.deputy_director || 'Deputy Director'}</option>
-                        <option value="HR">{t.roles?.hr || 'HR'}</option>
-                        <option value="Manager">{t.roles?.manager || 'Manager'}</option>
-                        <option value="Senior Officer">{t.roles?.senior_officer || 'Senior Officer'}</option>
-                        <option value="Office Staff">{t.roles?.office_staff || 'Office Staff'}</option>
-                        <option value="Staff">{t.roles?.staff || 'Staff'}</option>
-                        <option value="Leader">{t.roles?.leader || 'Leader'}</option>
+                        <option value="Minister">{t.roles?.minister || 'Minister'}</option>
+                        <option value="Chief of staff">{t.roles?.chief_of_staff || 'Chief of staff'}</option>
+                        <option value="Advisor">{t.roles?.advisor || 'Advisor'}</option>
+                        <option value="Protocol">{t.roles?.protocol || 'Protocol'}</option>
+                        <option value="Assistant">{t.roles?.assistant || 'Assistant'}</option>
                         <option value="Admin">{t.roles?.admin || 'Administrator'}</option>
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 text-xs">▼</div>
@@ -361,7 +356,8 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-md text-xs font-bold ${u.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' :
-                          u.role === 'Leader' ? 'bg-purple-100 text-purple-700' :
+                          u.role === 'Minister' ? 'bg-purple-100 text-purple-700' :
+                          u.role === 'Chief of staff' ? 'bg-blue-100 text-blue-700' :
                             'bg-slate-100 text-slate-600'
                         }`}>
                         {(() => {
