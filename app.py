@@ -892,30 +892,58 @@ def create_app():
     @jwt_required()
     def get_actions():
         from models import Action, User, Document, Project, db
-        # Order by created_at DESC to show newest directives first, join documents and projects
-        results = db.session.query(Action, User.username, User.first_name, User.last_name, Document.title.label('doc_title'), Project.name.label('project_name'))\
-            .outerjoin(User, Action.assigned_to == User.id)\
-            .outerjoin(Document, Action.document_id == Document.id)\
-            .outerjoin(Project, Action.project_id == Project.id)\
-            .order_by(Action.created_at.desc())\
-            .all()
+        try:
+            # Simplified query to avoid 500 errors
+            actions = db.session.query(Action).all()
             
-        return jsonify([{
-            "id": r.Action.id, 
-            "title": r.Action.title, 
-            "status": r.Action.status, 
-            "priority": r.Action.priority, 
-            "due_date": r.Action.due_date.isoformat() if r.Action.due_date else None,
-            "created_at": r.Action.created_at.isoformat(),
-            "assigned_to": r.Action.assigned_to,
-            "assigned_username": r.username if r.username else "Unassigned",
-            "assigned_first_name": r.first_name,
-            "assigned_last_name": r.last_name,
-            "document_id": r.Action.document_id,
-            "document_title": r.doc_title,
-            "project_id": r.Action.project_id,
-            "project_name": r.project_name
-        } for r in results]), 200
+            result_list = []
+            for action in actions:
+                # Get assigned user info
+                assigned_user = None
+                if action.assigned_to:
+                    assigned_user = db.session.get(User, action.assigned_to)
+                
+                # Get document info
+                doc_title = None
+                if action.document_id:
+                    doc = db.session.get(Document, action.document_id)
+                    if doc:
+                        doc_title = doc.title
+                
+                # Get project info
+                project_name = None
+                if action.project_id:
+                    project = db.session.get(Project, action.project_id)
+                    if project:
+                        project_name = project.name
+                
+                result_list.append({
+                    "id": action.id, 
+                    "title": action.title, 
+                    "status": action.status, 
+                    "priority": action.priority, 
+                    "due_date": action.due_date.isoformat() if action.due_date else None,
+                    "created_at": action.created_at.isoformat(),
+                    "assigned_to": action.assigned_to,
+                    "assigned_username": assigned_user.username if assigned_user else "Unassigned",
+                    "assigned_first_name": assigned_user.first_name if assigned_user else None,
+                    "assigned_last_name": assigned_user.last_name if assigned_user else None,
+                    "document_id": action.document_id,
+                    "document_title": doc_title,
+                    "project_id": action.project_id,
+                    "project_name": project_name
+                })
+            
+            # Sort by created_at DESC to show newest first
+            result_list.sort(key=lambda x: x['created_at'], reverse=True)
+            
+            return jsonify(result_list), 200
+            
+        except Exception as e:
+            print(f"Error in get_actions: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": f"Failed to load actions: {str(e)}"}), 500
 
 
     @app.route('/api/actions', methods=['POST'])
