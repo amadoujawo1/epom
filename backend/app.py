@@ -230,6 +230,48 @@ def create_app():
             print(f"Database setup error: {e}")
             return jsonify({"error": str(e)}), 500
 
+    @app.route('/api/fix-created-by', methods=['POST'])
+    @jwt_required()
+    def fix_created_by_column():
+        """Simple direct fix for missing created_by column in actions table"""
+        try:
+            print("Fixing created_by column...")
+            
+            # Direct SQL to add the column
+            with db.engine.connect() as conn:
+                # Check if column exists
+                result = conn.execute(db.text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'actions' AND column_name = 'created_by'
+                """)).fetchall()
+                
+                if not result:
+                    print("Adding created_by column...")
+                    conn.execute(db.text("""
+                        ALTER TABLE actions 
+                        ADD COLUMN created_by INTEGER REFERENCES users(id)
+                    """))
+                    conn.commit()
+                    print("created_by column added successfully!")
+                    
+                    return jsonify({
+                        "message": "created_by column added successfully",
+                        "table": "actions",
+                        "column": "created_by"
+                    }), 200
+                else:
+                    print("created_by column already exists")
+                    return jsonify({
+                        "message": "created_by column already exists",
+                        "table": "actions",
+                        "column": "created_by"
+                    }), 200
+                    
+        except Exception as e:
+            print(f"Error fixing created_by column: {e}")
+            return jsonify({"error": str(e)}), 500
+
     @app.route('/api/migrate-actions', methods=['POST'])
     @jwt_required()
     def migrate_actions_table():
