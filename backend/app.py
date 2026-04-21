@@ -1046,6 +1046,69 @@ def create_app():
             print(f"Error creating document: {e}")
             return jsonify({"error": f"Failed to create document: {str(e)}"}), 500
 
+    @app.route('/api/documents/<int:doc_id>', methods=['PUT'])
+    @jwt_required()
+    def update_document(doc_id):
+        """Update document status and other properties"""
+        from models import Document, db
+        current_user_id = int(get_jwt_identity())
+        current_user = db.session.get(User, current_user_id)
+        
+        doc = db.session.get(Document, doc_id)
+        if not doc:
+            return jsonify({"error": "Document not found"}), 404
+        
+        # Only admins or document creators can update documents
+        if current_user.role != 'Admin' and doc.uploaded_by != current_user_id:
+            return jsonify({"error": "Unauthorized to update this document"}), 403
+        
+        data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        try:
+            # Update document fields
+            if 'status' in data:
+                old_status = doc.status
+                doc.status = data['status']
+                
+                # Create audit log for status change
+                from models import DocumentAudit
+                audit = DocumentAudit(
+                    document_id=doc_id,
+                    user_id=current_user_id,
+                    action=f'status_changed_from_{old_status}_to_{data["status"]}'
+                )
+                db.session.add(audit)
+            
+            if 'title' in data:
+                doc.title = data['title']
+            
+            if 'content' in data:
+                doc.content = data['content']
+            
+            if 'category' in data:
+                doc.category = data['category']
+            
+            if 'doc_type' in data:
+                doc.doc_type = data['doc_type']
+            
+            db.session.commit()
+            
+            return jsonify({
+                "message": "Document updated successfully",
+                "id": doc.id,
+                "title": doc.title,
+                "status": doc.status,
+                "category": doc.category,
+                "doc_type": doc.doc_type
+            }), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error updating document: {e}")
+            return jsonify({"error": f"Failed to update document: {str(e)}"}), 500
+
     @app.route('/api/documents/template', methods=['POST'])
     @jwt_required()
     def create_document_from_template():
