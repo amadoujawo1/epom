@@ -1189,6 +1189,35 @@ def create_app():
             print(f"Error updating document: {e}")
             return jsonify({"error": f"Failed to update document: {str(e)}"}), 500
 
+    @app.route('/api/events', methods=['GET'])
+    @jwt_required()
+    def get_events():
+        """Get events for calendar"""
+        from models import Event, User, db
+        current_user_id = int(get_jwt_identity())
+        
+        try:
+            # Get events for current user
+            events = Event.query.filter_by(user_id=current_user_id).all()
+            
+            return jsonify([{
+                "id": e.id,
+                "title": e.title,
+                "description": e.description,
+                "start_time": e.start_time.isoformat(),
+                "end_time": e.end_time.isoformat(),
+                "priority": e.priority,
+                "location": e.location,
+                "meeting_link": e.meeting_link,
+                "mandatory_attendees": e.mandatory_attendees,
+                "optional_attendees": e.optional_attendees,
+                "resource_id": e.resource_id
+            } for e in events]), 200
+            
+        except Exception as e:
+            print(f"Error getting events: {e}")
+            return jsonify({"error": str(e)}), 500
+
     @app.route('/api/documents/template', methods=['POST'])
     @jwt_required()
     def create_document_from_template():
