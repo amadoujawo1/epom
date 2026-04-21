@@ -438,7 +438,7 @@ def create_app():
         
         # Check if this is the first user; if so, make them an Admin
         is_first_user = User.query.first() is None
-        role = 'Admin' if is_first_user else data.get('role', 'Staff')
+        role = 'Admin' if is_first_user else data.get('role', 'Assistant')
 
         new_user = User(
             username=data['username'],
@@ -821,7 +821,7 @@ def create_app():
 
     @app.route('/api/calendar', methods=['GET'])
     @jwt_required()
-    def get_events():
+    def get_calendar_events():
         events = Event.query.all()
         return jsonify([{
             "id": e.id, "title": e.title, "description": e.description,
