@@ -38,8 +38,14 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
     if (!token) return;
     try {
       setLoading(true);
+      console.log("Fetching users...");
       const res = await axios.get(`/api/users`, { headers: { Authorization: `Bearer ${token}` } });
+      console.log("Users response:", res.data);
+      console.log("Users response status:", res.status);
+      console.log("Users response headers:", res.headers);
       setUsers(res.data);
+      console.log("Users state set:", res.data);
+      console.log("Users length:", res.data?.length || 0);
     } catch {
       console.error("Failed to fetch users");
     } finally {
@@ -48,6 +54,10 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
   };
 
   useEffect(() => {
+    console.log("Users component - useEffect called");
+    console.log("Token available:", !!token);
+    console.log("Current users count:", users.length);
+    
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, lang]);
@@ -141,6 +151,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
     }
   };
 
+  console.log("Users component render - users count:", users.length, "loading:", loading);
   return (
     <div className="space-y-6 max-w-7xl">
       <div className="premium-card p-8 fade-in-up flex flex-col md:flex-row justify-between md:items-center gap-4">
