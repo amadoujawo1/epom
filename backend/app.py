@@ -303,7 +303,7 @@ def create_app():
                         "username": "admin",
                         "password": "admin123"
                     },
-                    "tables_created": [table.name for table in db.metadata.tables.keys()],
+                    "tables_created": [table for table in db.metadata.tables.keys()],
                     "database_url": app.config['SQLALCHEMY_DATABASE_URI']
                 })
             else:
@@ -311,7 +311,7 @@ def create_app():
                 return jsonify({
                     "status": "success",
                     "message": "Database already initialized",
-                    "tables": [table.name for table in db.metadata.tables.keys()],
+                    "tables": [table for table in db.metadata.tables.keys()],
                     "database_url": app.config['SQLALCHEMY_DATABASE_URI']
                 })
         except Exception as e:
