@@ -1046,6 +1046,56 @@ def create_app():
             print(f"Error creating document: {e}")
             return jsonify({"error": f"Failed to create document: {str(e)}"}), 500
 
+    @app.route('/api/documents/template', methods=['POST'])
+    @jwt_required()
+    def create_document_from_template():
+        """Create a new document from template (Digitized Briefing / Decision Note)"""
+        from models import Document, db
+        current_user_id = int(get_jwt_identity())
+        data = request.json
+        
+        if not data or not data.get('title'):
+            return jsonify({"error": "Document title is required"}), 400
+        
+        try:
+            # Create new document from template
+            new_document = Document(
+                title=data['title'],
+                content=data.get('content', ''),
+                category=data.get('category', 'Minister Briefings'),
+                doc_type=data.get('doc_type', 'Briefing Note'),
+                status='Draft',
+                uploaded_by=current_user_id,
+                file_path=''
+            )
+            
+            db.session.add(new_document)
+            db.session.commit()
+            
+            # Create audit log
+            from models import DocumentAudit
+            audit = DocumentAudit(
+                document_id=new_document.id,
+                user_id=current_user_id,
+                action='created_from_template'
+            )
+            db.session.add(audit)
+            db.session.commit()
+            
+            return jsonify({
+                "message": "Document created successfully from template",
+                "id": new_document.id,
+                "title": new_document.title,
+                "status": new_document.status,
+                "category": new_document.category,
+                "doc_type": new_document.doc_type
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating document from template: {e}")
+            return jsonify({"error": f"Failed to create document: {str(e)}"}), 500
+
     @app.route('/api/documents/<int:doc_id>/audit', methods=['GET'])
     @jwt_required()
     def get_document_audit(doc_id):
