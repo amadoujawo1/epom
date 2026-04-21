@@ -567,6 +567,66 @@ def create_app():
         users = User.query.all()
         return jsonify([{"id": u.id, "username": u.username, "first_name": u.first_name, "last_name": u.last_name, "role": u.role, "email": u.email, "is_active": u.is_active, "department": u.department} for u in users]), 200
 
+    @app.route('/api/users', methods=['POST'])
+    @jwt_required()
+    @role_required('Admin')
+    def create_user():
+        """Admin-only endpoint to create new users"""
+        from models import User
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['username', 'email', 'password', 'role']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+        
+        # Check if user already exists
+        if User.query.filter_by(username=data['username']).first():
+            return jsonify({"error": "Username already exists"}), 400
+        
+        if User.query.filter_by(email=data['email'].lower()).first():
+            return jsonify({"error": "Email already exists"}), 400
+        
+        # Validate role
+        valid_roles = ['Admin', 'Minister', 'Chief of staff', 'Advisor', 'Protocol', 'Assistant']
+        if data['role'] not in valid_roles:
+            return jsonify({"error": f"Invalid role. Must be one of: {', '.join(valid_roles)}"}), 400
+        
+        # Hash password
+        hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        # Create new user
+        new_user = User(
+            username=data['username'],
+            first_name=data.get('first_name', ''),
+            last_name=data.get('last_name', ''),
+            email=data['email'].lower(),
+            password_hash=hashed_password,
+            role=data['role'],
+            department=data.get('department', ''),
+            is_active=True,
+            must_change_password=data.get('must_change_password', True)
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "User created successfully",
+            "user": {
+                "id": new_user.id,
+                "username": new_user.username,
+                "first_name": new_user.first_name,
+                "last_name": new_user.last_name,
+                "email": new_user.email,
+                "role": new_user.role,
+                "department": new_user.department,
+                "is_active": new_user.is_active
+            }
+        }), 201
+
     @app.route('/api/users/<int:user_id>/status', methods=['PUT'])
     @jwt_required()
     @role_required('Admin')
