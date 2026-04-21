@@ -1,5 +1,5 @@
 [build]
 builder = "DOCKERFILE"
 
-# Force redeployment for created_by column fix
-# Build timestamp: 2026-04-21T16:55:00Z
+# Force redeployment for dashboard endpoints fix
+# Build timestamp: 2026-04-21T19:07:00Z
