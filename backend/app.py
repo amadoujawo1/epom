@@ -53,32 +53,10 @@ def create_app():
             db.create_all()
             print("✅ Tables created with create_all!")
             
-            # Create default admin user if not exists
-            admin_user = User.query.filter_by(username='admin').first()
-            if not admin_user:
-                print("Creating default admin user...")
-                admin_user = User(
-                    username='admin',
-                    email='admin@epom.local',
-                    first_name='System',
-                    last_name='Administrator',
-                    role='Admin',
-                    is_active=True,
-                    must_change_password=True
-                )
-                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                db.session.add(admin_user)
-                db.session.commit()
-                print("✅ Default admin user created! Username: admin, Password: admin123")
-                
-                # Verify admin user was created
-                verify_user = User.query.filter_by(username='admin').first()
-                if verify_user:
-                    print(f"✅ Admin user verified: {verify_user.username}")
-                else:
-                    print("❌ ERROR: Admin user verification failed!")
-            else:
-                print("✅ Admin user already exists")
+            # List all tables to confirm creation
+            inspector = db.inspect(db.engine)
+            existing_tables = inspector.get_table_names()
+            print(f"✅ Database tables verified: {existing_tables}")
                 
             # List all tables to confirm creation
             inspector = db.inspect(db.engine)
@@ -100,23 +78,7 @@ def create_app():
             db.create_all()
             print("✅ Health check: Database tables ensured")
             
-            # Check if admin user exists
-            admin_user = User.query.filter_by(username='admin').first()
-            if not admin_user:
-                print("Creating admin user from health check...")
-                admin_user = User(
-                    username='admin',
-                    email='admin@epom.local',
-                    first_name='System',
-                    last_name='Administrator',
-                    role='Admin',
-                    is_active=True,
-                    must_change_password=True
-                )
-                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                db.session.add(admin_user)
-                db.session.commit()
-                print("✅ Admin user created from health check")
+            print("✅ Health check: Database tables ensured")
             
             return jsonify({
                 "status": "success", 
@@ -311,51 +273,12 @@ def create_app():
             print(f"Migration error: {e}")
             return jsonify({"error": str(e)}), 500
             
-            # Create admin user
-            print("👤 Checking for admin user...")
-            admin_user = User.query.filter_by(username='admin').first()
-            if not admin_user:
-                print("Creating admin user...")
-                print("👤 Creating admin user...")
-                admin_user = User(
-                    username='admin',
-                    email='admin@epom.local',
-                    first_name='System',
-                    last_name='Administrator',
-                    role='Admin',
-                    is_active=True,
-                    must_change_password=True
-                )
-                admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                db.session.add(admin_user)
-                db.session.commit()
-                print("✅ Admin user created!")
-                
-                # Verify admin user was created
-                verify_user = User.query.filter_by(username='admin').first()
-                if verify_user:
-                    print(f"✅ Admin user verified: {verify_user.username}")
-                else:
-                    print("❌ ERROR: Admin user verification failed!")
-                
-                return jsonify({
-                    "status": "success",
-                    "message": "Database setup completed!",
-                    "admin_user": {
-                        "username": "admin",
-                        "password": "admin123"
-                    },
-                    "tables_created": [table for table in db.metadata.tables.keys()],
-                    "database_url": app.config['SQLALCHEMY_DATABASE_URI']
-                })
-            else:
-                print("✅ Admin user already exists")
-                return jsonify({
-                    "status": "success",
-                    "message": "Database already initialized",
-                    "tables": [table for table in db.metadata.tables.keys()],
-                    "database_url": app.config['SQLALCHEMY_DATABASE_URI']
-                })
+            return jsonify({
+                "status": "success",
+                "message": "Database initialized",
+                "tables": [table for table in db.metadata.tables.keys()],
+                "database_url": app.config['SQLALCHEMY_DATABASE_URI']
+            })
         except Exception as e:
             print(f"❌ Database setup error: {str(e)}")
             import traceback
@@ -464,27 +387,6 @@ def create_app():
                 print("✅ Database tables ensured to exist")
             except Exception as db_error:
                 print(f"⚠️ Database table creation error: {db_error}")
-            
-            # Create admin user if not exists
-            try:
-                admin_user = User.query.filter_by(username='admin').first()
-                if not admin_user:
-                    print("Creating default admin user...")
-                    admin_user = User(
-                        username='admin',
-                        email='admin@epom.local',
-                        first_name='System',
-                        last_name='Administrator',
-                        role='Admin',
-                        is_active=True,
-                        must_change_password=True
-                    )
-                    admin_user.password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                    db.session.add(admin_user)
-                    db.session.commit()
-                    print("✅ Default admin user created!")
-            except Exception as admin_error:
-                print(f"⚠️ Admin user creation error: {admin_error}")
             
             data = request.json
             user = User.query.filter_by(username=data.get('username')).first()

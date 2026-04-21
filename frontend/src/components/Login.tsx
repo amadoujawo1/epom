@@ -16,6 +16,9 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
   const [mfaChallenge, setMfaChallenge] = useState('');
   const [internalError, setInternalError] = useState('');
 
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regData, setRegData] = useState({ username: '', email: '', password: '', first_name: '', last_name: '', department: '' });
+
   // Clear form on every mount (e.g. after logout)
   useEffect(() => {
     setUsername('');
@@ -42,6 +45,22 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
     }
 
     setIsLoading(false);
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setInternalError('');
+    try {
+      await axios.post('/api/auth/register', regData);
+      setIsRegistering(false);
+      setUsername(regData.username);
+      alert(lang === 'fr' ? 'Compte créé avec succès ! Connectez-vous maintenant.' : 'Account created successfully! Please login now.');
+    } catch (err: any) {
+      setInternalError(err.response?.data?.error || 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
@@ -99,7 +118,9 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
               <img src="/logo.png" alt="ePOM Strategic Logo" className="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" />
             </div>
             <h1 className="text-4xl font-black text-slate-800 tracking-tight mb-2">ePOM</h1>
-            <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] opacity-60">{t.subtitle || 'Operational Management Interface'}</p>
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.2em] opacity-60">
+              {isRegistering ? (lang === 'fr' ? 'CRÉER UN COMPTE' : 'CREATE ACCOUNT') : (t.subtitle || 'Operational Management Interface')}
+            </p>
           </div>
 
           {(authMessage || internalError) && (
@@ -108,7 +129,105 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
             </div>
           )}
 
-          {!showMfa ? (
+          {showMfa ? (
+            <form onSubmit={handleMfaSubmit} className="space-y-6 fade-in">
+              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl mb-6">
+                <p className="text-xs text-indigo-700 font-bold leading-relaxed">
+                  {mfaChallenge}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-5 py-4 rounded-2xl border border-indigo-200 bg-white/60 text-center text-2xl font-black tracking-[0.5em] text-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-400/20 backdrop-blur-md transition-all shadow-inner"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-8 bg-slate-900 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:bg-slate-800 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-70 flex justify-center items-center"
+              >
+                {isLoading ? (
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  "Verify & Access"
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowMfa(false)}
+                className="w-full text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-600 transition-colors"
+              >
+                Back to credentials
+              </button>
+            </form>
+          ) : isRegistering ? (
+            <form onSubmit={handleRegister} className="space-y-4 fade-in">
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  placeholder={lang === 'fr' ? 'Prénom' : 'First Name'}
+                  value={regData.first_name}
+                  onChange={(e) => setRegData({ ...regData, first_name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-white/40 bg-white/40 text-slate-800 focus:bg-white/70 outline-none transition-all"
+                />
+                <input
+                  placeholder={lang === 'fr' ? 'Nom' : 'Last Name'}
+                  value={regData.last_name}
+                  onChange={(e) => setRegData({ ...regData, last_name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-white/40 bg-white/40 text-slate-800 focus:bg-white/70 outline-none transition-all"
+                />
+              </div>
+              <input
+                required
+                placeholder={t.username || 'Username'}
+                value={regData.username}
+                onChange={(e) => setRegData({ ...regData, username: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-white/40 bg-white/40 text-slate-800 focus:bg-white/70 outline-none transition-all"
+              />
+              <input
+                required
+                type="email"
+                placeholder={t.email || 'Email'}
+                value={regData.email}
+                onChange={(e) => setRegData({ ...regData, email: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-white/40 bg-white/40 text-slate-800 focus:bg-white/70 outline-none transition-all"
+              />
+              <input
+                required
+                type="password"
+                placeholder={t.password || 'Password'}
+                value={regData.password}
+                onChange={(e) => setRegData({ ...regData, password: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-white/40 bg-white/40 text-slate-800 focus:bg-white/70 outline-none transition-all"
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-70"
+              >
+                {isLoading ? '...' : (lang === 'fr' ? "S'inscrire" : 'Register Account')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRegistering(false)}
+                className="w-full text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-600 transition-colors pt-2"
+              >
+                Already have an account? Login
+              </button>
+            </form>
+          ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1" htmlFor="username">
@@ -166,49 +285,13 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
                   t.auth_btn || "Authenticate"
                 )}
               </button>
-            </form>
-          ) : (
-            <form onSubmit={handleMfaSubmit} className="space-y-6 fade-in">
-              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl mb-6">
-                <p className="text-xs text-indigo-700 font-bold leading-relaxed">
-                  {mfaChallenge}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-5 py-4 rounded-2xl border border-indigo-200 bg-white/60 text-center text-2xl font-black tracking-[0.5em] text-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-400/20 backdrop-blur-md transition-all shadow-inner"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-8 bg-slate-900 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:bg-slate-800 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-70 flex justify-center items-center"
-              >
-                {isLoading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  "Verify & Access"
-                )}
-              </button>
 
               <button
                 type="button"
-                onClick={() => setShowMfa(false)}
-                className="w-full text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                onClick={() => setIsRegistering(true)}
+                className="w-full text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-600 transition-colors pt-4"
               >
-                Back to credentials
+                No account? Register First User
               </button>
             </form>
           )}

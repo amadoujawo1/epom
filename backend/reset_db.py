@@ -22,18 +22,7 @@ def reset_database():
         db.create_all()
         print("Tables created.")
 
-        # Create initial admin user
-        print("Seeding admin user...")
-        hashed_password = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        admin = User(
-            username='admin',
-            email='admin@digidelivery.gm',
-            password_hash=hashed_password,
-            role='Admin'
-        )
-        db.session.add(admin)
-        db.session.commit()
-        print("Database reset successfully! Initial credentials: admin / admin123")
+        print("Database reset successfully!")
 
 if __name__ == "__main__":
     reset_database()
