@@ -78,6 +78,7 @@ class Action(db.Model):
     priority = db.Column(db.String(20), default='Medium') # High, Medium, Low
     due_date = db.Column(db.DateTime(timezone=True), nullable=True)
     assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=True)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

@@ -180,22 +180,100 @@ def create_app():
             # Import all models to ensure they're registered
             from models import User, Event, Document, Action, Project, Notification, Resource, AttendanceRecord, DocumentAudit
             
-            print("✅ Models imported successfully!")
+            print("https://sqlalche.me/e/20/f405")
             
             # Force table creation with explicit metadata
-            print("📝 Creating tables with explicit metadata...")
+            print("Creating tables with explicit metadata...")
             db.metadata.create_all(db.engine)
-            print("✅ Tables created with metadata!")
+            print("Tables created with metadata!")
             
             # Also try create_all as backup
-            print("📝 Creating tables with create_all...")
+            print("Creating tables with create_all...")
             db.create_all()
-            print("✅ Tables created with create_all!")
+            print("Tables created with create_all!")
+            
+            # Add missing created_by column to actions table if it doesn't exist
+            try:
+                with db.engine.connect() as conn:
+                    # Check if created_by column exists
+                    result = conn.execute(db.text("""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'actions' AND column_name = 'created_by'
+                    """)).fetchall()
+                    
+                    if not result:
+                        print("Adding missing created_by column to actions table...")
+                        conn.execute(db.text("""
+                            ALTER TABLE actions 
+                            ADD COLUMN created_by INTEGER REFERENCES users(id)
+                        """))
+                        conn.commit()
+                        print("created_by column added successfully!")
+                    else:
+                        print("created_by column already exists")
+                        
+            except Exception as col_error:
+                print(f"Error adding created_by column: {col_error}")
+                # Continue with setup even if column addition fails
+            
+            return jsonify({
+                "status": "success", 
+                "message": "Database setup completed!",
+                "admin_user": {
+                    "username": admin_user.username if admin_user else None,
+                    "role": admin_user.role if admin_user else None
+                }
+            }), 200
+            
+        except Exception as e:
+            print(f"Database setup error: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route('/api/migrate-actions', methods=['POST'])
+    @jwt_required()
+    def migrate_actions_table():
+        """Add missing created_by column to actions table"""
+        try:
+            print("Migrating actions table...")
+            
+            # Check if created_by column exists and add it if missing
+            with db.engine.connect() as conn:
+                result = conn.execute(db.text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'actions' AND column_name = 'created_by'
+                """)).fetchall()
+                
+                if not result:
+                    print("Adding missing created_by column to actions table...")
+                    conn.execute(db.text("""
+                        ALTER TABLE actions 
+                        ADD COLUMN created_by INTEGER REFERENCES users(id)
+                    """))
+                    conn.commit()
+                    print("created_by column added successfully!")
+                    
+                    return jsonify({
+                        "message": "Actions table migration completed successfully",
+                        "column_added": "created_by"
+                    }), 200
+                else:
+                    print("created_by column already exists")
+                    return jsonify({
+                        "message": "created_by column already exists",
+                        "column_added": None
+                    }), 200
+                    
+        except Exception as e:
+            print(f"Migration error: {e}")
+            return jsonify({"error": str(e)}), 500
             
             # Create admin user
             print("👤 Checking for admin user...")
             admin_user = User.query.filter_by(username='admin').first()
             if not admin_user:
+                print("Creating admin user...")
                 print("👤 Creating admin user...")
                 admin_user = User(
                     username='admin',
@@ -845,9 +923,11 @@ def create_app():
             else:
                 project_id = int(project_id)
 
+            current_user_id = int(get_jwt_identity())
             new_action = Action(
                 title=data['title'],
                 assigned_to=int(data['assigned_to']),
+                created_by=current_user_id,
                 description=data.get('description', ''),
                 status=data.get('status', 'Pending'),
                 priority=data.get('priority', 'Medium'),
