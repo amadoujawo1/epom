@@ -42,7 +42,11 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
       setMfaUserId(result.user_id);
       setMfaChallenge(result.message);
       setShowMfa(true);
+    } else if (result?.success === false) {
+      // Login failed - show error message
+      setInternalError(result.error || 'Login failed');
     }
+    // If login succeeds, the onLogin function in App.tsx handles navigation
 
     setIsLoading(false);
   };
