@@ -90,10 +90,12 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
         });
         setSuccess(lang === 'fr' ? 'Personnel mis à jour !' : 'Personnel updated successfully!');
       } else {
-        // Create new user
+        // Create new user using admin-only endpoint
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { confirmPassword: _confirmPassword, ...registerData } = formData;
-        await axios.post(`/api/auth/register`, registerData);
+        await axios.post(`/api/users`, registerData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         setSuccess(lang === 'fr' ? 'Personnel ajouté avec succès !' : 'Personnel added successfully!');
       }
 
@@ -198,113 +200,155 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
             </div>
 
             <div className="p-6 overflow-y-auto custom-scrollbar">
-              {error && <div className="mb-5 text-sm text-red-600 bg-red-50 p-4 rounded-xl font-semibold border border-red-100 flex items-center gap-3"><span className="text-base text-red-500">✕</span> {error}</div>}
-              {success && <div className="mb-5 text-sm text-emerald-600 bg-emerald-50 p-4 rounded-xl font-semibold border border-emerald-100 flex items-center gap-3"><span className="text-base text-emerald-500">✓</span> {success}</div>}
+              {error && <div className="mb-5 text-sm text-red-600 bg-red-50 p-4 rounded-xl font-semibold border border-red-100 flex items-center gap-3"><span className="text-base text-red-500">×</span> {error}</div>}
+              {success && <div className="mb-5 text-sm text-emerald-600 bg-emerald-50 p-4 rounded-xl font-semibold border border-emerald-100 flex items-center gap-3"><span className="text-base text-emerald-500">?</span> {success}</div>}
 
-              <form onSubmit={handleAddUser} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.first_name || (lang === 'fr' ? 'Prénom' : 'First Name')}</label>
-                    <input
-                      type="text"
-                      value={formData.first_name}
-                      onChange={e => setFormData({ ...formData, first_name: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.last_name || (lang === 'fr' ? 'Nom' : 'Last Name')}</label>
-                    <input
-                      type="text"
-                      value={formData.last_name}
-                      onChange={e => setFormData({ ...formData, last_name: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.username || 'System Username'}</label>
-                    <input
-                      required type="text"
-                      value={formData.username}
-                      onChange={e => setFormData({ ...formData, username: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.email || 'Email Address'}</label>
-                    <input
-                      required type="email"
-                      value={formData.email}
-                      onChange={e => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{lang === 'fr' ? 'Département' : 'Department/Branch'}</label>
-                    <input
-                      type="text"
-                      value={formData.department}
-                      onChange={e => setFormData({ ...formData, department: e.target.value })}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.temp_pass || 'Password'}</label>
-                    <div className="relative">
+              <form onSubmit={handleAddUser} className="space-y-6">
+                {/* Personal Information Section */}
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                    {lang === 'fr' ? 'Informations Personnelles' : 'Personal Information'}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.first_name || (lang === 'fr' ? 'Prénom' : 'First Name')}</label>
                       <input
-                        required={!editingUser} type={showPassword ? 'text' : 'password'}
-                        placeholder={editingUser ? (lang === 'fr' ? '(Inchangé)' : '(Unchanged)') : ''}
-                        value={formData.password}
-                        onChange={e => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-4 py-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                        type="text"
+                        value={formData.first_name}
+                        onChange={e => setFormData({ ...formData, first_name: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        placeholder={lang === 'fr' ? 'Entrez le prénom' : 'Enter first name'}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 p-2"
-                      >
-                        {showPassword ? "Hide" : "Show"}
-                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.last_name || (lang === 'fr' ? 'Nom' : 'Last Name')}</label>
+                      <input
+                        type="text"
+                        value={formData.last_name}
+                        onChange={e => setFormData({ ...formData, last_name: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        placeholder={lang === 'fr' ? 'Entrez le nom de famille' : 'Enter last name'}
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.confirm_pass || 'Confirm Password'}</label>
-                    <div className="relative">
+                </div>
+
+                {/* Account Information Section */}
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                    {lang === 'fr' ? 'Informations du Compte' : 'Account Information'}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.username || 'System Username'} *</label>
                       <input
-                        required={!!formData.password} type={showConfirmPassword ? 'text' : 'password'}
-                        value={formData.confirmPassword}
-                        onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
-                        className="w-full px-4 py-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                        required type="text"
+                        value={formData.username}
+                        onChange={e => setFormData({ ...formData, username: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        placeholder={lang === 'fr' ? 'Nom d\'utilisateur unique' : 'Unique username'}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 p-2"
-                      >
-                        {showConfirmPassword ? "Hide" : "Show"}
-                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.email || 'Email Address'} *</label>
+                      <input
+                        required type="email"
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        placeholder={lang === 'fr' ? 'adresse@exemple.com' : 'email@example.com'}
+                      />
                     </div>
                   </div>
+                </div>
 
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.role || 'System Role'}</label>
-                    <div className="relative">
-                      <select
-                        value={formData.role}
-                        onChange={e => setFormData({ ...formData, role: e.target.value })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
-                      >
-                        <option value="Minister">{t.roles?.minister || 'Minister'}</option>
-                        <option value="Chief of staff">{t.roles?.chief_of_staff || 'Chief of staff'}</option>
-                        <option value="Advisor">{t.roles?.advisor || 'Advisor'}</option>
-                        <option value="Protocol">{t.roles?.protocol || 'Protocol'}</option>
-                        <option value="Assistant">{t.roles?.assistant || 'Assistant'}</option>
-                        <option value="Admin">{t.roles?.admin || 'Administrator'}</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 text-xs">▼</div>
+                {/* Organizational Information Section */}
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                    {lang === 'fr' ? 'Informations Organisationnelles' : 'Organizational Information'}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{lang === 'fr' ? 'Département' : 'Department/Branch'}</label>
+                      <input
+                        type="text"
+                        value={formData.department}
+                        onChange={e => setFormData({ ...formData, department: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        placeholder={lang === 'fr' ? 'Département ou direction' : 'Department or division'}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.role || 'System Role'} *</label>
+                      <div className="relative">
+                        <select
+                          value={formData.role}
+                          onChange={e => setFormData({ ...formData, role: e.target.value })}
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none transition-all cursor-pointer"
+                        >
+                          <option value="">{lang === 'fr' ? 'Sélectionner un rôle' : 'Select a role'}</option>
+                          <option value="Minister">? {t.roles?.minister || 'Minister'} - {lang === 'fr' ? 'Niveau ministériel' : 'Ministerial level'}</option>
+                          <option value="Chief of staff">? {t.roles?.chief_of_staff || 'Chief of staff'} - {lang === 'fr' ? 'Direction de cabinet' : 'Executive management'}</option>
+                          <option value="Advisor">? {t.roles?.advisor || 'Advisor'} - {lang === 'fr' ? 'Conseiller senior' : 'Senior advisory'}</option>
+                          <option value="Protocol">? {t.roles?.protocol || 'Protocol'} - {lang === 'fr' ? 'Services protocolaires' : 'Protocol services'}</option>
+                          <option value="Assistant">? {t.roles?.assistant || 'Assistant'} - {lang === 'fr' ? 'Assistance administrative' : 'Administrative support'}</option>
+                          <option value="Admin">? {t.roles?.admin || 'Administrator'} - {lang === 'fr' ? 'Administration système' : 'System administration'}</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 text-xs">?</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Information Section */}
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                    {lang === 'fr' ? 'Sécurité du Compte' : 'Account Security'}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.temp_pass || 'Password'} {!editingUser && '*'}</label>
+                      <div className="relative">
+                        <input
+                          required={!editingUser} type={showPassword ? 'text' : 'password'}
+                          placeholder={editingUser ? (lang === 'fr' ? '(Laisser inchangé)' : '(Leave unchanged)') : (lang === 'fr' ? 'Mot de passe sécurisé' : 'Secure password')}
+                          value={formData.password}
+                          onChange={e => setFormData({ ...formData, password: e.target.value })}
+                          className="w-full px-4 py-2.5 pr-12 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg transition-colors"
+                          title={showPassword ? (lang === 'fr' ? 'Masquer' : 'Hide') : (lang === 'fr' ? 'Afficher' : 'Show')}
+                        >
+                          {showPassword ? "???" : "???"}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t.confirm_pass || 'Confirm Password'} {!!formData.password && '*'}</label>
+                      <div className="relative">
+                        <input
+                          required={!!formData.password} type={showConfirmPassword ? 'text' : 'password'}
+                          placeholder={lang === 'fr' ? 'Confirmer le mot de passe' : 'Confirm password'}
+                          value={formData.confirmPassword}
+                          onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
+                          className="w-full px-4 py-2.5 pr-12 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg transition-colors"
+                          title={showConfirmPassword ? (lang === 'fr' ? 'Masquer' : 'Hide') : (lang === 'fr' ? 'Afficher' : 'Show')}
+                        >
+                          {showConfirmPassword ? "???" : "???"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
