@@ -290,11 +290,11 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
                           className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none transition-all cursor-pointer"
                         >
                           <option value="">{lang === 'fr' ? 'Sélectionner un rôle' : 'Select a role'}</option>
-                          <option value="Minister">? {t.roles?.minister || 'Minister'} - {lang === 'fr' ? 'Niveau ministériel' : 'Ministerial level'}</option>
-                          <option value="Chief of staff">? {t.roles?.chief_of_staff || 'Chief of staff'} - {lang === 'fr' ? 'Direction de cabinet' : 'Executive management'}</option>
-                          <option value="Advisor">? {t.roles?.advisor || 'Advisor'} - {lang === 'fr' ? 'Conseiller senior' : 'Senior advisory'}</option>
-                          <option value="Protocol">? {t.roles?.protocol || 'Protocol'} - {lang === 'fr' ? 'Services protocolaires' : 'Protocol services'}</option>
-                          <option value="Assistant">? {t.roles?.assistant || 'Assistant'} - {lang === 'fr' ? 'Assistance administrative' : 'Administrative support'}</option>
+                          <option value="minister">? {t.roles?.minister || 'Minister'} - {lang === 'fr' ? 'Niveau ministériel' : 'Ministerial level'}</option>
+                          <option value="chief_of_staff">? {t.roles?.chief_of_staff || 'Chief of staff'} - {lang === 'fr' ? 'Direction de cabinet' : 'Executive management'}</option>
+                          <option value="advisor">? {t.roles?.advisor || 'Advisor'} - {lang === 'fr' ? 'Conseiller senior' : 'Senior advisory'}</option>
+                          <option value="protocol">? {t.roles?.protocol || 'Protocol'} - {lang === 'fr' ? 'Services protocolaires' : 'Protocol services'}</option>
+                          <option value="assistant">? {t.roles?.assistant || 'Assistant'} - {lang === 'fr' ? 'Assistance administrative' : 'Administrative support'}</option>
                           <option value="Admin">? {t.roles?.admin || 'Administrator'} - {lang === 'fr' ? 'Administration système' : 'System administration'}</option>
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 text-xs">?</div>
@@ -411,8 +411,11 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-md text-xs font-bold ${u.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' :
-                          u.role === 'Minister' ? 'bg-purple-100 text-purple-700' :
-                          u.role === 'Chief of staff' ? 'bg-blue-100 text-blue-700' :
+                          u.role === 'minister' ? 'bg-purple-100 text-purple-700' :
+                          u.role === 'chief_of_staff' ? 'bg-blue-100 text-blue-700' :
+                          u.role === 'advisor' ? 'bg-green-100 text-green-700' :
+                          u.role === 'protocol' ? 'bg-orange-100 text-orange-700' :
+                          u.role === 'assistant' ? 'bg-cyan-100 text-cyan-700' :
                             'bg-slate-100 text-slate-600'
                         }`}>
                         {(() => {
