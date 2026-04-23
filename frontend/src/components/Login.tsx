@@ -15,6 +15,8 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
   const [mfaUserId, setMfaUserId] = useState<number | null>(null);
   const [mfaChallenge, setMfaChallenge] = useState('');
   const [internalError, setInternalError] = useState('');
+  const [mfaTimer, setMfaTimer] = useState(300); // 5 minutes
+  const [mfaTimerActive, setMfaTimerActive] = useState(false);
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [regData, setRegData] = useState({ username: '', email: '', password: '', first_name: '', last_name: '', department: '' });
@@ -29,7 +31,37 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
     setMfaUserId(null);
     setMfaChallenge('');
     setInternalError('');
+    setMfaTimer(300);
+    setMfaTimerActive(false);
   }, []);
+
+  // MFA Timer countdown effect
+  useEffect(() => {
+    let interval: number;
+    if (mfaTimerActive && mfaTimer > 0) {
+      interval = window.setInterval(() => {
+        setMfaTimer((prev) => {
+          if (prev <= 1) {
+            setMfaTimerActive(false);
+            setInternalError('Verification code expired. Please request a new code.');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => window.clearInterval(interval);
+  }, [mfaTimerActive, mfaTimer]);
+
+  // Start MFA timer when MFA is shown
+  useEffect(() => {
+    if (showMfa) {
+      setMfaTimer(300);
+      setMfaTimerActive(true);
+    } else {
+      setMfaTimerActive(false);
+    }
+  }, [showMfa]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +127,29 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
     }
   };
 
+  const handleResendCode = async () => {
+    setIsLoading(true);
+    setInternalError('');
+    
+    try {
+      // Request new MFA code by logging in again
+      const result = await onLogin(username, password);
+      
+      if (result?.mfa_required) {
+        setMfaTimer(300);
+        setMfaTimerActive(true);
+        setMfaCode('');
+        setInternalError('New verification code sent to your device');
+      } else {
+        setInternalError('Failed to generate new verification code');
+      }
+    } catch (error: unknown) {
+      setInternalError('Failed to resend verification code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="glass premium-card w-full max-w-md p-8 md:p-10 fade-in-up animate-float relative overflow-hidden">
@@ -134,49 +189,151 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
           )}
 
           {showMfa ? (
-            <form onSubmit={handleMfaSubmit} className="space-y-6 fade-in">
-              <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl mb-6">
-                <p className="text-xs text-indigo-700 font-bold leading-relaxed">
-                  {mfaChallenge}
-                </p>
+            <div className="fade-in">
+              {/* MFA Header */}
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">Two-Factor Authentication</h2>
+                <p className="text-slate-500 text-sm">Enter the verification code to secure your access</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">
-                  Verification Code
-                </label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="000000"
-                  value={mfaCode}
-                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                  className="w-full px-5 py-4 rounded-2xl border border-indigo-200 bg-white/60 text-center text-2xl font-black tracking-[0.5em] text-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-400/20 backdrop-blur-md transition-all shadow-inner"
-                  required
-                  autoFocus
-                />
+              {/* MFA Challenge Message */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-indigo-800 mb-1">Security Challenge</p>
+                    <p className="text-xs text-indigo-700 leading-relaxed">
+                      {mfaChallenge}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full mt-8 bg-slate-900 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:bg-slate-800 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-70 flex justify-center items-center"
-              >
-                {isLoading ? (
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  "Verify & Access"
-                )}
-              </button>
+              <form onSubmit={handleMfaSubmit} className="space-y-6">
+                {/* MFA Code Input */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Verification Code
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={mfaCode}
+                      onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-6 py-4 rounded-2xl border-2 border-indigo-200 bg-white text-center text-3xl font-black tracking-[0.5em] text-slate-800 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-400/20 focus:border-indigo-400 transition-all shadow-lg"
+                      required
+                      autoFocus
+                    />
+                    {mfaCode.length === 6 && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2 text-center">Enter the 6-digit code sent to your device</p>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => setShowMfa(false)}
-                className="w-full text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-600 transition-colors"
-              >
-                Back to credentials
-              </button>
-            </form>
+                {/* Timer and Security Info */}
+                <div className="space-y-3">
+                  {/* Countdown Timer */}
+                  <div className={`rounded-xl p-4 border ${mfaTimer <= 60 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${mfaTimer <= 60 ? 'bg-red-500' : 'bg-indigo-500'}`}>
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-700">Code expires in</p>
+                          <p className={`text-lg font-bold ${mfaTimer <= 60 ? 'text-red-600' : 'text-indigo-600'}`}>
+                            {Math.floor(mfaTimer / 60)}:{(mfaTimer % 60).toString().padStart(2, '0')}
+                          </p>
+                        </div>
+                      </div>
+                      {mfaTimer <= 60 && (
+                        <div className="text-xs text-red-600 font-semibold animate-pulse">
+                          Expiring Soon!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Demo Code Info */}
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <div className="flex items-center gap-3 text-xs text-slate-600">
+                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>For demo purposes, use code: <strong className="text-indigo-600">123456</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <button
+                    type="submit"
+                    disabled={isLoading || mfaCode.length !== 6}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:from-indigo-700 hover:to-purple-700 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Verify & Access System
+                      </>
+                    )}
+                  </button>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMfa(false);
+                        setMfaCode('');
+                        setInternalError('');
+                      }}
+                      className="flex-1 text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-600 transition-colors py-2"
+                    >
+                      ← Back to Login
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendCode}
+                      disabled={isLoading}
+                      className="flex-1 text-indigo-600 text-xs font-bold uppercase tracking-widest hover:text-indigo-700 transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? 'Sending...' : 'Resend Code'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
           ) : isRegistering ? (
             <form onSubmit={handleRegister} className="space-y-4 fade-in">
               <div className="grid grid-cols-2 gap-3">
@@ -288,14 +445,6 @@ const Login = ({ onLogin, authMessage, lang, setLang, translations }: { onLogin:
                 ) : (
                   t.auth_btn || "Authenticate"
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsRegistering(true)}
-                className="w-full text-slate-400 text-xs font-bold uppercase tracking-widest hover:text-indigo-600 transition-colors pt-4"
-              >
-                No account? Register First User
               </button>
             </form>
           )}
