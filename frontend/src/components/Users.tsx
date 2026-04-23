@@ -411,15 +411,24 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-md text-xs font-bold ${u.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' :
-                          u.role === 'minister' ? 'bg-purple-100 text-purple-700' :
-                          u.role === 'chief_of_staff' ? 'bg-blue-100 text-blue-700' :
-                          u.role === 'advisor' ? 'bg-green-100 text-green-700' :
-                          u.role === 'protocol' ? 'bg-orange-100 text-orange-700' :
-                          u.role === 'assistant' ? 'bg-cyan-100 text-cyan-700' :
+                          u.role === 'Minister' ? 'bg-purple-100 text-purple-700' :
+                          u.role === 'Chief of staff' ? 'bg-blue-100 text-blue-700' :
+                          u.role === 'Advisor' ? 'bg-green-100 text-green-700' :
+                          u.role === 'Protocol' ? 'bg-orange-100 text-orange-700' :
+                          u.role === 'Assistant' ? 'bg-cyan-100 text-cyan-700' :
                             'bg-slate-100 text-slate-600'
                         }`}>
                         {(() => {
-                          const roleKey = u.role?.toLowerCase().replace(/ /g, '_');
+                          // Handle both capitalized and lowercase role names
+                          const roleMap: Record<string, string> = {
+                            'Admin': 'admin',
+                            'Minister': 'minister', 
+                            'Chief of staff': 'chief_of_staff',
+                            'Advisor': 'advisor',
+                            'Protocol': 'protocol',
+                            'Assistant': 'assistant'
+                          };
+                          const roleKey = roleMap[u.role] || u.role?.toLowerCase().replace(/ /g, '_');
                           return t.roles?.[roleKey] || u.role;
                         })()}
                       </span>
