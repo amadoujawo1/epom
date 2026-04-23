@@ -97,14 +97,23 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
         project_id: formData.project_id || null
       };
 
-      await axios.post(`/api/actions`, payload, {
+      console.log('Submitting action payload:', payload);
+      
+      const response = await axios.post(`/api/actions`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      console.log('API response:', response.data);
+      
       setFormData({ title: '', assigned_to: '', due_date: '', priority: 'Medium', status: 'Pending', project_id: '' });
       setShowAddForm(false);
       fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create action", err);
+      if (axios.isAxiosError(err)) {
+        console.error('Error response:', err.response?.data);
+        console.error('Error status:', err.response?.status);
+      }
     } finally {
       setIsSubmitting(false);
     }
