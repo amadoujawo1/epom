@@ -433,7 +433,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
                     <button 
                       type="submit" 
                       className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold py-3 px-8 rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg flex items-center gap-2"
-                      disabled={!formData.role || Boolean(formData.password && formData.password !== formData.confirmPassword)}
+                      disabled={(!formData.role || Boolean(formData.password && formData.password !== formData.confirmPassword)) as boolean}
                     >
                       {editingUser ? (t.save_btn || 'Save Changes') : (t.create_btn || 'Create Profile')}
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
