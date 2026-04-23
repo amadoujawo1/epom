@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig';
 import type { User } from '../App';
 
 interface Project {
@@ -63,9 +63,9 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
       setLoading(true);
 
       const [actionsRes, usersRes, projectsRes] = await Promise.all([
-        axios.get(`/api/actions`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`/api/personnel`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`/api/projects`, { headers: { Authorization: `Bearer ${token}` } })
+        api.get(`/api/actions`),
+        api.get(`/api/personnel`),
+        api.get(`/api/projects`)
       ]);
 
       setActions(actionsRes.data);
@@ -99,9 +99,7 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
 
       console.log('Submitting action payload:', payload);
       
-      const response = await axios.post(`/api/actions`, payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.post(`/api/actions`, payload);
       
       console.log('API response:', response.data);
       
@@ -110,7 +108,7 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
       fetchData();
     } catch (err: any) {
       console.error("Failed to create action", err);
-      if (axios.isAxiosError(err)) {
+      if (err && typeof err === 'object' && 'response' in err) {
         console.error('Error response:', err.response?.data);
         console.error('Error status:', err.response?.status);
       }
@@ -124,9 +122,7 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
     if (!token) return;
     setIsSubmitting(true);
     try {
-      await axios.post(`/api/projects`, projectFormData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.post(`/api/projects`, projectFormData);
       setProjectFormData({ name: '', description: '' });
       setShowProjectForm(false);
       fetchData();
@@ -140,9 +136,7 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
   const handleDeleteAction = async (actionId: number) => {
     if (!window.confirm(lang === 'fr' ? 'Supprimer définitivement cette directive ?' : 'Permanently delete this directive?')) return;
     try {
-      await axios.delete(`/api/actions/${actionId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/api/actions/${actionId}`);
       fetchData();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
@@ -152,9 +146,7 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
 
   const handleUpdateStatus = async (actionId: number, newStatus: string) => {
     try {
-      await axios.put(`/api/actions/${actionId}`, { status: newStatus }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/api/actions/${actionId}`, { status: newStatus });
       fetchData();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
@@ -164,9 +156,7 @@ const Actions = ({ lang, translations, token, user }: ActionsProps) => {
 
   const handleGenerateReport = async () => {
     try {
-      const res = await axios.post(`/api/reports/weekly`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.post(`/api/reports/weekly`, {});
       alert(res.data.message);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
