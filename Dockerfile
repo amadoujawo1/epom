@@ -1,5 +1,5 @@
 # Use Node.js base image for frontend build
-# Build timestamp: 2025-04-25-18-45
+# Build timestamp: 2025-04-25-19-00 - ROLES FIX REBUILD
 FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
@@ -7,8 +7,12 @@ WORKDIR /app/frontend
 # Copy all frontend files
 COPY frontend/ ./
 
+# Clear any existing cache
+RUN rm -rf node_modules/.cache || true
+RUN rm -rf dist || true
+
 # Install frontend dependencies and build
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --no-cache
 RUN chmod +x node_modules/.bin/*
 RUN npm run build
 
@@ -39,6 +43,7 @@ COPY . .
 # Set environment variables
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
+ENV NODE_ENV=production
 
 # Expose port
 EXPOSE 8080

@@ -1,6 +1,13 @@
 [build]
 builder = "DOCKERFILE"
 
-# Force immediate redeployment for commit button fix
-# Build timestamp: 2026-04-25T17:35:00Z
-# Deploy: Commit button fix - handle usernames in assigned_to field
+# Force complete rebuild - ROLES FIX
+# Build timestamp: 2025-04-25T19:00:00Z
+# Issue: Railway serving cached frontend with old roles
+# Solution: Complete rebuild with new configuration
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10

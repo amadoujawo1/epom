@@ -1,41 +1,21 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    react(),
-    VitePWA({ 
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      manifest: {
-        name: 'Digi Delivery Operational Node',
-        short_name: 'DigiDelivery',
-        description: 'Digi Delivery Operational Interface',
-        theme_color: '#111424',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+  plugins: [react()],
+  build: {
+    // Force rebuild by changing build config
+    minify: 'terser',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
       }
-    })
-  ],
+    }
+  },
   server: {
-    host: '0.0.0.0',
+    host: true,
     port: 5173,
     proxy: process.env.NODE_ENV === 'production' ? undefined : {
       '/api': {
@@ -45,4 +25,7 @@ export default defineConfig({
       },
     },
   },
+  define: {
+    __APP_VERSION__: '"2025-04-25-19-00-ROLES-FIX"'
+  }
 })
