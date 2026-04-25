@@ -1393,5 +1393,23 @@ def create_app():
 # Create app instance for deployment
 app = create_app()
 
+@app.route('/api/roles', methods=['GET'])
+    @jwt_required()
+    def get_roles():
+        """Get available system roles"""
+        try:
+            roles = [
+                {"value": "Minister", "label": "🏛️ Minister"},
+                {"value": "Chief of staff", "label": "👔 Chief of staff"},
+                {"value": "Advisor", "label": "💼 Advisor"},
+                {"value": "Protocol", "label": "🤝 Protocol"},
+                {"value": "Assistant", "label": "📋 Assistant"},
+                {"value": "Admin", "label": "⚙️ Administrator"}
+            ]
+            return jsonify({"roles": roles}), 200
+        except Exception as e:
+            print(f"Error getting roles: {e}")
+            return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5007)

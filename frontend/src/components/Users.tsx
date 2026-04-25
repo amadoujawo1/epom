@@ -1,7 +1,7 @@
 // Railway roles fix - FORCE REBUILD 2025-04-25-19-05
 import { ROLES_VERSION, EXPECTED_ROLES } from '../roles-version';
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig';
 import type { User } from '../App';
 
 interface UserRecord {
@@ -27,6 +27,7 @@ interface UsersProps {
 const Users = ({ lang, translations, user, token }: UsersProps) => {
   const t = translations?.[lang]?.users || translations?.['en']?.users || {};
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [roles, setRoles] = useState<Array<{value: string, label: string}>>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({ first_name: '', last_name: '', username: '', email: '', password: '', confirmPassword: '', role: '', department: '' });
@@ -36,12 +37,33 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
   const [success, setSuccess] = useState('');
 
+  const fetchRoles = async () => {
+    if (!token) return;
+    try {
+      console.log("Fetching roles...");
+      const res = await api.get(`/api/roles`);
+      console.log("Roles response:", res.data);
+      setRoles(res.data.roles || []);
+    } catch (err) {
+      console.error("Failed to fetch roles:", err);
+      // Fallback to hardcoded roles
+      setRoles([
+        {value: "Minister", label: "🏛️ Minister"},
+        {value: "Chief of staff", label: "👔 Chief of staff"},
+        {value: "Advisor", label: "💼 Advisor"},
+        {value: "Protocol", label: "🤝 Protocol"},
+        {value: "Assistant", label: "📋 Assistant"},
+        {value: "Admin", label: "⚙️ Administrator"}
+      ]);
+    }
+  };
+
   const fetchUsers = async () => {
     if (!token) return;
     try {
       setLoading(true);
       console.log("Fetching users...");
-      const res = await axios.get(`/api/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await api.get(`/api/users`);
       console.log("Users response:", res.data);
       console.log("Users response status:", res.status);
       console.log("Users response headers:", res.headers);
@@ -61,6 +83,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
     console.log("Current users count:", users.length);
     
     fetchUsers();
+    fetchRoles();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, lang]);
 
@@ -87,17 +110,13 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
         };
         if (formData.password) updateData.password = formData.password;
 
-        await axios.put(`/api/users/${editingUser.id}`, updateData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.put(`/api/users/${editingUser.id}`, updateData);
         setSuccess(lang === 'fr' ? 'Personnel mis à jour !' : 'Personnel updated successfully!');
       } else {
         // Create new user using admin-only endpoint
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { confirmPassword: _confirmPassword, ...registerData } = formData;
-        await axios.post(`/api/users`, registerData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await api.post(`/api/users`, registerData);
         setSuccess(lang === 'fr' ? 'Personnel ajouté avec succès !' : 'Personnel added successfully!');
       }
 
@@ -132,9 +151,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
       : (t.enable_prompt || (lang === 'fr' ? 'activer' : 'enable'));
     if (!window.confirm(`${t.confirm_action || (lang === 'fr' ? 'Voulez-vous' : 'Are you sure you want to')} ${action} ${lang === 'fr' ? 'cet utilisateur' : 'this user'}?`)) return;
     try {
-      await axios.put(`/api/users/${userId}/status`, { is_active: !isCurrentlyActive }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/api/users/${userId}/status`, { is_active: !isCurrentlyActive });
       fetchUsers();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
@@ -145,9 +162,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
   const handleDelete = async (userId: number) => {
     if (!window.confirm(lang === 'fr' ? 'Supprimer définitivement cet utilisateur ?' : 'Permanently delete this user? This cannot be undone.')) return;
     try {
-      await axios.delete(`/api/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/api/users/${userId}`);
       fetchUsers();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: string } } };
@@ -335,12 +350,11 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
                           required
                         >
                           <option value="">{lang === 'fr' ? 'Sélectionner un rôle' : 'Select a role'}</option>
-                          <option value="Minister">🏛️ {t.roles?.minister || 'Minister'}</option>
-                          <option value="Chief of staff">👔 {t.roles?.chief_of_staff || 'Chief of staff'}</option>
-                          <option value="Advisor">💼 {t.roles?.advisor || 'Advisor'}</option>
-                          <option value="Protocol">🤝 {t.roles?.protocol || 'Protocol'}</option>
-                          <option value="Assistant">📋 {t.roles?.assistant || 'Assistant'}</option>
-                          <option value="Admin">⚙️ {t.roles?.admin || 'Administrator'}</option>
+                          {roles.map((role) => (
+                            <option key={role.value} value={role.value}>
+                              {role.label}
+                            </option>
+                          ))}
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-green-600">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
