@@ -1,4 +1,4 @@
-# e-POM Tactical Enterprise Node - v2.1.0-MYSQL
+# e-POM Tactical Enterprise Node - v2.1.1-ROLES-FIX
 import os
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
