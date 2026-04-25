@@ -37,23 +37,35 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
   const [success, setSuccess] = useState('');
 
   const fetchRoles = async () => {
+    // Use hardcoded roles as primary solution to avoid deployment caching issues
+    const hardcodedRoles = [
+      {value: "Minister", label: "🏛️ Minister"},
+      {value: "Chief of staff", label: "👔 Chief of staff"},
+      {value: "Advisor", label: "💼 Advisor"},
+      {value: "Protocol", label: "🤝 Protocol"},
+      {value: "Assistant", label: "📋 Assistant"},
+      {value: "Admin", label: "⚙️ Administrator"}
+    ];
+    
+    // Set hardcoded roles immediately
+    setRoles(hardcodedRoles);
+    
+    // Try to fetch from API as fallback (in case it works in future)
     if (!token) return;
     try {
-      console.log("Fetching roles from personnel endpoint...");
+      console.log("Attempting to fetch roles from personnel endpoint...");
       const res = await api.get(`/api/personnel`);
       console.log("Personnel response:", res.data);
-      setRoles(res.data.roles || []);
+      
+      // Check if response has roles data (new format)
+      if (res.data && typeof res.data === 'object' && res.data.roles) {
+        console.log("Using API roles data");
+        setRoles(res.data.roles);
+      } else {
+        console.log("API returned old format, using hardcoded roles");
+      }
     } catch (err) {
-      console.error("Failed to fetch roles:", err);
-      // Fallback to hardcoded roles
-      setRoles([
-        {value: "Minister", label: "🏛️ Minister"},
-        {value: "Chief of staff", label: "👔 Chief of staff"},
-        {value: "Advisor", label: "💼 Advisor"},
-        {value: "Protocol", label: "🤝 Protocol"},
-        {value: "Assistant", label: "📋 Assistant"},
-        {value: "Admin", label: "⚙️ Administrator"}
-      ]);
+      console.error("Failed to fetch roles from API, using hardcoded roles:", err);
     }
   };
 
