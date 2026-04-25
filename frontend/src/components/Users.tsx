@@ -40,9 +40,9 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
   const fetchRoles = async () => {
     if (!token) return;
     try {
-      console.log("Fetching roles...");
-      const res = await api.get(`/api/roles`);
-      console.log("Roles response:", res.data);
+      console.log("Fetching roles from personnel endpoint...");
+      const res = await api.get(`/api/personnel`);
+      console.log("Personnel response:", res.data);
       setRoles(res.data.roles || []);
     } catch (err) {
       console.error("Failed to fetch roles:", err);

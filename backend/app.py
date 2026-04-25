@@ -461,14 +461,47 @@ def create_app():
         users = User.query.all()
         return jsonify([{"id": u.id, "username": u.username, "first_name": u.first_name, "last_name": u.last_name, "role": u.role, "email": u.email, "is_active": u.is_active, "department": u.department} for u in users]), 200
 
+    @app.route('/api/roles', methods=['GET'])
+    @jwt_required()
+    def get_roles():
+        """Get available system roles"""
+        try:
+            roles = [
+                {"value": "Minister", "label": "Minister"},
+                {"value": "Chief of staff", "label": "Chief of staff"},
+                {"value": "Advisor", "label": "Advisor"},
+                {"value": "Protocol", "label": "Protocol"},
+                {"value": "Assistant", "label": "Assistant"},
+                {"value": "Admin", "label": "Administrator"}
+            ]
+            return jsonify({"roles": roles}), 200
+        except Exception as e:
+            print(f"Error getting roles: {e}")
+            return jsonify({"error": str(e)}), 500
+
     @app.route('/api/personnel', methods=['GET'])
     @jwt_required()
     def get_personnel():
-        # Simple personnel endpoint that returns user data for dropdown
+        # Simple personnel endpoint that returns user data for dropdown - FORCED RELOAD
         from models import User
         users = User.query.all()
-        return jsonify([{"id": u.id, "username": u.username, "first_name": u.first_name, "last_name": u.last_name, "role": u.role, "email": u.email, "is_active": u.is_active, "department": u.department} for u in users]), 200
+        
+        # Include available roles in the response
+        roles = [
+            {"value": "Minister", "label": "🏛️ Minister"},
+            {"value": "Chief of staff", "label": "👔 Chief of staff"},
+            {"value": "Advisor", "label": "💼 Advisor"},
+            {"value": "Protocol", "label": "🤝 Protocol"},
+            {"value": "Assistant", "label": "📋 Assistant"},
+            {"value": "Admin", "label": "⚙️ Administrator"}
+        ]
+        
+        return jsonify({
+            "personnel": [{"id": u.id, "username": u.username, "first_name": u.first_name, "last_name": u.last_name, "role": u.role, "email": u.email, "is_active": u.is_active, "department": u.department} for u in users],
+            "roles": roles
+        }), 200
 
+    
     @app.route('/api/users', methods=['POST'])
     @jwt_required()
     @role_required('Admin')
@@ -1379,6 +1412,7 @@ def create_app():
             print(f"Error in simple dashboard: {e}")
             return jsonify({"error": str(e)}), 500
 
+    
     # Serve frontend
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
@@ -1388,28 +1422,16 @@ def create_app():
         else:
             return send_from_directory(app.static_folder, 'index.html')
 
+    # Print all registered routes for debugging
+    print("DEBUG: Registered routes:")
+    for rule in app.url_map.iter_rules():
+        print(f"  {rule.methods} {rule.rule}")
+    
     return app
 
 # Create app instance for deployment
 app = create_app()
 
-@app.route('/api/roles', methods=['GET'])
-    @jwt_required()
-    def get_roles():
-        """Get available system roles"""
-        try:
-            roles = [
-                {"value": "Minister", "label": "🏛️ Minister"},
-                {"value": "Chief of staff", "label": "👔 Chief of staff"},
-                {"value": "Advisor", "label": "💼 Advisor"},
-                {"value": "Protocol", "label": "🤝 Protocol"},
-                {"value": "Assistant", "label": "📋 Assistant"},
-                {"value": "Admin", "label": "⚙️ Administrator"}
-            ]
-            return jsonify({"roles": roles}), 200
-        except Exception as e:
-            print(f"Error getting roles: {e}")
-            return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5007)
