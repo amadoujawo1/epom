@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
 
-# Force immediate redeployment for missing endpoints
-# Build timestamp: 2026-04-21T19:42:00Z
-# Deploy: /api/dashboard/stats, /api/dashboard/simple, /api/events, /api/fix-created-by
+# Force immediate redeployment for commit button fix
+# Build timestamp: 2026-04-25T17:35:00Z
+# Deploy: Commit button fix - handle usernames in assigned_to field
