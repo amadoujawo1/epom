@@ -1,5 +1,5 @@
 # Use Node.js base image for frontend build
-# Build timestamp: 2025-04-25-19-00 - ROLES FIX REBUILD
+# Build timestamp: 2025-04-25-22-30 - AGGRESSIVE ROLES FIX
 FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend

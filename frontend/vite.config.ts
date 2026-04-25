@@ -26,6 +26,6 @@ export default defineConfig({
     },
   },
   define: {
-    __APP_VERSION__: '"2025-04-25-19-00-ROLES-FIX"'
+    __APP_VERSION__: '"2025-04-25-22-30-AGGRESSIVE-FIX"'
   }
 })

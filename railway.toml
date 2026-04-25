@@ -1,10 +1,10 @@
 [build]
 builder = "DOCKERFILE"
 
-# Force complete rebuild - ROLES FIX
-# Build timestamp: 2025-04-25T19:00:00Z
+# Force complete rebuild - AGGRESSIVE ROLES FIX
+# Build timestamp: 2025-04-25T22:30:00Z
 # Issue: Railway serving cached frontend with old roles
-# Solution: Complete rebuild with new configuration
+# Solution: Complete rebuild with aggressive cache-busting
 
 [deploy]
 healthcheckPath = "/api/health"
