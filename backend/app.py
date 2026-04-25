@@ -637,6 +637,21 @@ def create_app():
             print(f"DELETE user error: {e}")
             return jsonify({"error": f"Failed to delete user: {str(e)}"}), 500
 
+    # --- ROLES ROUTE ---
+    @app.route('/api/roles', methods=['GET'])
+    @jwt_required()
+    def get_roles():
+        """Get available system roles for dropdown selection"""
+        roles = [
+            {"value": "Minister", "label": "🏛️ Minister"},
+            {"value": "Chief of staff", "label": "👔 Chief of staff"},
+            {"value": "Advisor", "label": "💼 Advisor"},
+            {"value": "Protocol", "label": "🤝 Protocol"},
+            {"value": "Assistant", "label": "📋 Assistant"},
+            {"value": "Admin", "label": "⚙️ Administrator"}
+        ]
+        return jsonify({"roles": roles}), 200
+
     # --- ATTENDANCE ROUTES ---
     @app.route('/api/attendance/clock', methods=['POST'])
     @jwt_required()
