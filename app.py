@@ -22,7 +22,12 @@ def create_app():
     # Database configuration - Support both Railway and local development
     database_url = os.getenv("DATABASE_URL")
     
-    if database_url and database_url.startswith("postgresql"):
+    # Validate DATABASE_URL format
+    if database_url and "host" in database_url and "password" in database_url:
+        print("❌ DATABASE_URL contains placeholder values - using SQLite fallback")
+        print("🔧 Please configure Railway environment variables properly")
+        database_url = "sqlite:///epom_dev.db"
+    elif database_url and database_url.startswith("postgresql"):
         print(f"🔗 Using Railway PostgreSQL database")
     elif database_url:
         print(f"Using external database: {database_url}")
