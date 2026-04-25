@@ -1,0 +1,26 @@
+# New Railway service configuration to bypass caching issues
+# This creates a fresh deployment environment
+
+[build]
+builder = "DOCKERFILE"
+buildCommand = "docker build --no-cache -t epom-new ."
+
+# Force complete rebuild with new service
+# Build timestamp: 2025-04-25T23:00:00Z
+# Purpose: Bypass Railway frontend caching issues
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+startCommand = "gunicorn --bind 0.0.0.0:8080 app:app"
+
+# Environment variables for cache busting
+[deploy.env]
+NODE_ENV = "production"
+BUILD_HASH = "CACHE-BUST-2025-04-25-23-00-ROLES-FIX"
+FORCE_REBUILD = "true"
+
+[deploy.env.production]
+RAILWAY_ENVIRONMENT = "production"

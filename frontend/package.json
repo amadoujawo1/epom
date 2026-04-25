@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.1.2-ROLES-FIX",
+  "version": "0.1.3-COMPREHENSIVE-CACHE-FIX",
   "type": "module",
   "scripts": {
     "dev": "vite",

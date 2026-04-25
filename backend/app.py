@@ -1413,14 +1413,39 @@ def create_app():
             return jsonify({"error": str(e)}), 500
 
     
-    # Serve frontend
+    # Serve frontend with cache busting
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend(path):
+        # Add cache-busting headers
+        response = None
+        build_hash = "CACHE-BUST-2025-04-25-23-00-ROLES-FIX"
+        
         if path != "" and os.path.exists(app.static_folder + '/' + path):
-            return send_from_directory(app.static_folder, path)
+            response = send_from_directory(app.static_folder, path)
         else:
-            return send_from_directory(app.static_folder, 'index.html')
+            response = send_from_directory(app.static_folder, 'index.html')
+        
+        # Add cache control headers to force refresh
+        if response:
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            response.headers['X-Build-Hash'] = build_hash
+        
+        return response
+
+    # Force refresh endpoint for cache busting
+    @app.route('/api/force-refresh', methods=['GET'])
+    def force_refresh():
+        """Force frontend refresh with cache busting"""
+        build_hash = "CACHE-BUST-2025-04-25-23-00-ROLES-FIX"
+        return jsonify({
+            "message": "Force refresh triggered",
+            "build_hash": build_hash,
+            "timestamp": "2025-04-25-23-00",
+            "cache_bust": True
+        }), 200
 
     # Print all registered routes for debugging
     print("DEBUG: Registered routes:")

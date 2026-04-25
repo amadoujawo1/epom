@@ -1,5 +1,6 @@
 # Use Node.js base image for frontend build
-# Build timestamp: 2025-04-25-22-30 - AGGRESSIVE ROLES FIX
+# Build timestamp: 2025-04-25-23-00 - COMPREHENSIVE CACHE FIX
+# Purpose: Force Railway to rebuild frontend and bypass caching
 FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
@@ -7,14 +8,19 @@ WORKDIR /app/frontend
 # Copy all frontend files
 COPY frontend/ ./
 
-# Clear any existing cache
+# Clear any existing cache aggressively
 RUN rm -rf node_modules/.cache || true
 RUN rm -rf dist || true
+RUN rm -rf .vite || true
+RUN rm -rf package-lock.json || true
 
-# Install frontend dependencies and build
-RUN npm install --legacy-peer-deps --no-cache
+# Install frontend dependencies and build with cache busting
+RUN npm install --legacy-peer-deps --no-cache --force
 RUN chmod +x node_modules/.bin/*
-RUN npm run build
+RUN npm run build -- --mode production
+
+# Add build timestamp to force changes
+RUN echo "BUILD_TIMESTAMP=2025-04-25-23-00-COMPREHENSIVE-FIX" > /app/frontend/build-info.txt
 
 # Use Python base image for backend
 FROM python:3.10-slim

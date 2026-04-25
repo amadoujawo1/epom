@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// Import cache buster for Railway deployment
+import './cacheBuster';
+
 const API_BASE = '/api';
 
 // Import your components (you'll need to create these)
