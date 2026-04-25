@@ -3,9 +3,8 @@ import axios from 'axios';
 // Create axios instance with dynamic base URL
 const getBackendUrl = () => {
   if (import.meta.env.PROD) {
-    // In Railway deployment, frontend and backend are served together
-    // Use same origin for API calls
-    return window.location.origin;
+    // Use the correct Railway deployment URL
+    return 'https://epom.up.railway.app';
   }
   return 'http://127.0.0.1:5007'; // In development, use local backend
 };

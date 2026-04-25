@@ -928,9 +928,23 @@ def create_app():
                 project_id = int(project_id)
 
             current_user_id = int(get_jwt_identity())
+            
+            # Handle assigned_to - convert username to user ID if needed
+            assigned_to_value = data['assigned_to']
+            if isinstance(assigned_to_value, str) and not assigned_to_value.isdigit():
+                # It's a username, find the user ID
+                assigned_user = User.query.filter_by(username=assigned_to_value).first()
+                if assigned_user:
+                    assigned_to_id = assigned_user.id
+                else:
+                    return jsonify({"error": f"User '{assigned_to_value}' not found"}), 400
+            else:
+                # It's already a user ID
+                assigned_to_id = int(assigned_to_value)
+            
             new_action = Action(
                 title=data['title'],
-                assigned_to=int(data['assigned_to']),
+                assigned_to=assigned_to_id,
                 created_by=current_user_id,
                 description=data.get('description', ''),
                 status=data.get('status', 'Pending'),
