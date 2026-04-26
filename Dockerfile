@@ -1,15 +1,36 @@
 # Use Node.js base image for frontend build
-# Build timestamp: 2025-04-25-23-30 - DOCKER-FIX-ROLLEDOWN
-# Purpose: Fix rolldown native binding issue with Alpine Linux
-FROM node:20-bookworm-slim AS frontend-builder
+# Build timestamp: 2025-04-25-23-45 - FINAL-ROLLEDOWN-FIX
+# Purpose: Fix rolldown native binding issue with Ubuntu base
+FROM node:20 AS frontend-builder
 
 WORKDIR /app/frontend
 
 # Copy all frontend files
 COPY frontend/ ./
 
-# Install build dependencies for rolldown compatibility
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+# Install complete build environment for rolldown
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    build-essential \
+    libnss3-dev \
+    libatk-bridge2.0-dev \
+    libdrm2 \
+    libxkbcommon-dev \
+    libxcomposite-dev \
+    libxdamage-dev \
+    libxrandr-dev \
+    libgbm-dev \
+    libxss-dev \
+    libasound2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for rolldown
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV npm_config_target_platform=linux
+ENV npm_config_target_arch=x64
+ENV npm_config_target_libc=libc
 
 # Clear any existing cache aggressively
 RUN rm -rf node_modules/.cache || true
@@ -17,15 +38,18 @@ RUN rm -rf dist || true
 RUN rm -rf .vite || true
 RUN rm -rf package-lock.json || true
 
-# Install frontend dependencies with rolldown fix
+# Install frontend dependencies with rolldown compatibility
 RUN npm install --legacy-peer-deps --no-cache
 RUN chmod +x node_modules/.bin/*
 
-# Build with rolldown compatibility
+# Rebuild rolldown specifically if needed
+RUN npm rebuild rolldown --no-cache || true
+
+# Build with proper environment
 RUN npm run build
 
 # Add build timestamp to force changes
-RUN echo "BUILD_TIMESTAMP=2025-04-25-23-30-DOCKER-FIX" > /app/frontend/build-info.txt
+RUN echo "BUILD_TIMESTAMP=2025-04-25-23-45-FINAL-ROLLEDOWN-FIX" > /app/frontend/build-info.txt
 
 # Use Python base image for backend
 FROM python:3.10-slim
