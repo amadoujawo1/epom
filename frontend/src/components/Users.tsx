@@ -50,7 +50,7 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
     // Set hardcoded roles immediately
     setRoles(hardcodedRoles);
     
-    // Try to fetch from API as fallback (in case it works in future)
+    // Try to fetch from API as fallback (Railway compatibility)
     if (!token) return;
     try {
       console.log("Attempting to fetch roles from personnel endpoint...");
@@ -59,10 +59,32 @@ const Users = ({ lang, translations, user, token }: UsersProps) => {
       
       // Check if response has roles data (new format)
       if (res.data && typeof res.data === 'object' && res.data.roles) {
-        console.log("Using API roles data");
+        console.log("Using API roles data (new format)");
         setRoles(res.data.roles);
+      } else if (Array.isArray(res.data)) {
+        // Railway returns old format (array of users) - extract unique roles
+        console.log("API returned old format (array), extracting roles from users");
+        const uniqueRoles = [...new Set(res.data.map((user: any) => user.role).filter(Boolean))];
+        const formattedRoles = uniqueRoles.map(role => {
+          const roleMap: Record<string, string> = {
+            'Admin': '⚙️ Administrator',
+            'Minister': '🏛️ Minister', 
+            'Chief of staff': '👔 Chief of staff',
+            'Advisor': '💼 Advisor',
+            'Protocol': '🤝 Protocol',
+            'Assistant': '📋 Assistant'
+          };
+          return {
+            value: role,
+            label: roleMap[role] || role
+          };
+        });
+        if (formattedRoles.length > 0) {
+          console.log("Extracted roles from users:", formattedRoles);
+          setRoles(formattedRoles);
+        }
       } else {
-        console.log("API returned old format, using hardcoded roles");
+        console.log("API returned unexpected format, using hardcoded roles");
       }
     } catch (err) {
       console.error("Failed to fetch roles from API, using hardcoded roles:", err);
