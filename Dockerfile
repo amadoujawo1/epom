@@ -1,12 +1,15 @@
 # Use Node.js base image for frontend build
-# Build timestamp: 2025-04-25-23-00 - COMPREHENSIVE CACHE FIX
-# Purpose: Force Railway to rebuild frontend and bypass caching
-FROM node:20-alpine AS frontend-builder
+# Build timestamp: 2025-04-25-23-30 - DOCKER-FIX-ROLLEDOWN
+# Purpose: Fix rolldown native binding issue with Alpine Linux
+FROM node:20-bookworm-slim AS frontend-builder
 
 WORKDIR /app/frontend
 
 # Copy all frontend files
 COPY frontend/ ./
+
+# Install build dependencies for rolldown compatibility
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 # Clear any existing cache aggressively
 RUN rm -rf node_modules/.cache || true
@@ -14,13 +17,15 @@ RUN rm -rf dist || true
 RUN rm -rf .vite || true
 RUN rm -rf package-lock.json || true
 
-# Install frontend dependencies and build with cache busting
-RUN npm install --legacy-peer-deps --no-cache --force
+# Install frontend dependencies with rolldown fix
+RUN npm install --legacy-peer-deps --no-cache
 RUN chmod +x node_modules/.bin/*
-RUN npm run build -- --mode production
+
+# Build with rolldown compatibility
+RUN npm run build
 
 # Add build timestamp to force changes
-RUN echo "BUILD_TIMESTAMP=2025-04-25-23-00-COMPREHENSIVE-FIX" > /app/frontend/build-info.txt
+RUN echo "BUILD_TIMESTAMP=2025-04-25-23-30-DOCKER-FIX" > /app/frontend/build-info.txt
 
 # Use Python base image for backend
 FROM python:3.10-slim
